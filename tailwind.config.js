@@ -1,12 +1,28 @@
-// tailwind.config.js
-export default {
+// // tailwind.config.js
+// export default {
+//   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+//   theme: {
+//     extend: {
+//       colors: {
+//         primary: "#0B74FF",
+//       },
+//     },
+//   },
+//   plugins: [],
+// };
+
+export const theme = {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
-      colors: {
-        primary: "#0B74FF",
+      fontFamily: {
+        sans: ["Inter", "system-ui", "sans-serif"],
+      },
+      fontWeight: {
+        medium: 500,
+        semibold: 600,
       },
     },
   },
-  plugins: [],
 };
+export const plugins = [];
