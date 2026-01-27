@@ -1,5 +1,5 @@
+// Dashboard.jsx
 import React from "react";
-
 import { Download, Boxes, Upload } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import FilterBar from "../components/FilterBar";
@@ -9,9 +9,29 @@ import DashboardWidgets from "./DashboardWidgets";
 import DashboardQueue from "./DashboardQueue";
 
 const Dashboard = () => {
+  const dashboardFilters = [
+    {
+      type: "select",
+      label: "Time Period",
+      value: "Today",
+      className: "w-[160px]",
+    },
+    {
+      type: "select",
+      label: "Warehouse",
+      value: "WH-NYC-01",
+      className: "w-[160px]",
+    },
+    {
+      type: "select",
+      label: "Client",
+      value: "All Clients",
+      className: "w-[180px]",
+    },
+  ];
+
   return (
     <div className="max-w-full">
-      {/* PAGE HEADER */}
       <PageHeader
         title="WMS Dashboard"
         subtitle="Inbound, putaway, picking, packing, dispatch and billing overview"
@@ -36,8 +56,8 @@ const Dashboard = () => {
         }
       />
 
-      {/* FILTER BAR */}
-      <FilterBar />
+      {/* FILTER BAR (now visible) */}
+      <FilterBar filters={dashboardFilters} />
 
       {/* INBOUND */}
       <SectionHeader
@@ -74,6 +94,7 @@ const Dashboard = () => {
         <StatCard title="Packed Ready" value="89" accentColor="#10B981" />
         <StatCard title="Shipped Today" value="42" accentColor="#10B981" />
       </div>
+
       <DashboardQueue />
       <DashboardWidgets />
     </div>
