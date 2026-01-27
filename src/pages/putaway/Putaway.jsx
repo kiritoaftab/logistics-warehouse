@@ -2,8 +2,10 @@ import React from "react";
 import PageHeader from "../components/PageHeader";
 import FilterBar from "../components/FilterBar";
 import CusTable from "../components/CusTable";
+import { useNavigate } from "react-router-dom";
 
 const Putaway = () => {
+  const navigate = useNavigate();
   const filters = [
     {
       type: "select",
@@ -124,6 +126,7 @@ const Putaway = () => {
       title: "Action",
       render: (row) => (
         <button
+          onClick={() => navigate("/putawaydetails")}
           className={[
             "rounded-md px-4 py-2 text-sm font-medium",
             row.status === "Pending"
