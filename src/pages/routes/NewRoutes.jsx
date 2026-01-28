@@ -8,6 +8,9 @@ import AsnReceiving from "../inbound/AsnReceiving";
 import Inventory from "../inventory/Inventory";
 import InventoryStockBySKU from "../inventory/InventoryStockBySKU";
 import { useRoutes, Navigate } from "react-router-dom";
+import OutboundOrders from "../outbound/OutboundOrders";
+import CreateSalesOrder from "../outbound/CreateSalesOrder";
+import OrderDetail from "../outbound/OrderDetail";
 
 const NewRoutes = [
   { path: "/", element: <Navigate to="/inventory" replace /> },
@@ -16,8 +19,11 @@ const NewRoutes = [
   { path: "/putawaydetails", element: <PutawayDetails /> },
   { path: "/inbound", element: <InboundASN /> },
   { path: "/createASN", element: <CreateASN /> },
-  { path: "/ASNdetails", element: <AsnDetail /> },
+  { path: "/ASNdetails/:id", element: <AsnDetail /> },
   { path: "/ASNreceive", element: <AsnReceiving /> },
+  { path: "/outbound", element: <OutboundOrders /> },
+  { path: "/saleOrderCreate", element: <CreateSalesOrder /> },
+  { path: "/orderDetails", element: <OrderDetail /> },
   {
     path: "/inventory",
     element: <Inventory />,

@@ -1,14 +1,15 @@
 import { ArrowLeft, Printer, PlayCircle } from "lucide-react";
 import PageHeader from "../components/PageHeader";
-import { useMemo } from "react";
+import { use, useMemo } from "react";
 import AsnMetaBar from "./components/asndetails/AsnMetaBar";
 import ShipmentJourney from "./components/asndetails/ShipmentJourney";
 import KeyValueCard from "./components/asndetails/KeyValueCard";
 import QuantitySummary from "./components/asndetails/QuantitySummary";
+import { useNavigate } from "react-router-dom";
 
 const AsnDetail = () => {
   const asnNo = "ASN-10293";
-
+  const navigate = useNavigate();
   const breadcrumbs = useMemo(
     () => [{ label: "Inbound", to: "/inbound" }, { label: "ASN Detail" }],
     [],
@@ -33,7 +34,10 @@ const AsnDetail = () => {
         title={asnNo}
         actions={
           <>
-            <button className="px-4 py-2 border rounded-md text-sm bg-white flex items-center gap-2">
+            <button
+              onClick={() => navigate("/inbound")}
+              className="px-4 py-2 border rounded-md text-sm bg-white flex items-center gap-2"
+            >
               <ArrowLeft size={16} /> Back to List
             </button>
             <button className="px-4 py-2 border rounded-md text-sm bg-white text-red-600 border-red-200">
