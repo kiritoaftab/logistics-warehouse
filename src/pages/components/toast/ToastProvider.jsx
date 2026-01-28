@@ -5,14 +5,22 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { CheckCircle2, Info, XCircle, X } from "lucide-react";
+import { CheckCircle2, Info, XCircle, X, AlertCircle } from "lucide-react";
 
 const ToastContext = createContext(null);
 
 const icons = {
-  success: <CheckCircle2 size={18} className="text-green-600" />,
-  error: <XCircle size={18} className="text-red-600" />,
-  info: <Info size={18} className="text-blue-600" />,
+  success: <CheckCircle2 size={20} className="text-green-500 flex-shrink-0" />,
+  error: <XCircle size={20} className="text-red-500 flex-shrink-0" />,
+  info: <Info size={20} className="text-blue-500 flex-shrink-0" />,
+  warning: <AlertCircle size={20} className="text-amber-500 flex-shrink-0" />,
+};
+
+const backgrounds = {
+  success: "bg-green-50 border-green-200",
+  error: "bg-red-50 border-red-200",
+  info: "bg-blue-50 border-blue-200",
+  warning: "bg-amber-50 border-amber-200",
 };
 
 export const ToastProvider = ({ children }) => {
@@ -25,7 +33,7 @@ export const ToastProvider = ({ children }) => {
   const show = useCallback(
     (type, message, opts = {}) => {
       const id = `${Date.now()}-${Math.random()}`;
-      const duration = opts.duration ?? 2500;
+      const duration = opts.duration ?? 3000;
 
       setToasts((prev) => [...prev, { id, type, message }]);
 
@@ -39,6 +47,7 @@ export const ToastProvider = ({ children }) => {
       success: (msg, opts) => show("success", msg, opts),
       error: (msg, opts) => show("error", msg, opts),
       info: (msg, opts) => show("info", msg, opts),
+      warning: (msg, opts) => show("warning", msg, opts),
     }),
     [show],
   );
@@ -48,27 +57,63 @@ export const ToastProvider = ({ children }) => {
       {children}
 
       {/* Toast stack */}
-      <div className="fixed top-4 right-4 z-[10000] space-y-2 w-[320px] max-w-[calc(100vw-2rem)]">
-        {toasts.map((t) => (
+      <div className="fixed top-4 right-4 z-[10000] space-y-3 w-[360px] max-w-[calc(100vw-2rem)] pointer-events-none">
+        {toasts.map((t, index) => (
           <div
             key={t.id}
-            className="bg-white border shadow-sm rounded-lg p-3 flex items-start gap-2"
+            className="pointer-events-auto animate-[slideIn_0.3s_ease-out,fadeIn_0.3s_ease-out]"
+            style={{
+              animationDelay: `${index * 0.05}s`,
+            }}
           >
-            <div className="mt-0.5">{icons[t.type] || icons.info}</div>
-            <div className="flex-1">
-              <div className="text-sm text-gray-900">{t.message}</div>
-            </div>
-            <button
-              onClick={() => remove(t.id)}
-              className="text-gray-400 hover:text-gray-700"
-              type="button"
-              aria-label="Close"
+            <div
+              className={`
+                ${backgrounds[t.type] || backgrounds.info}
+                border shadow-lg rounded-xl p-4 flex items-start gap-3
+                backdrop-blur-sm
+                transition-all duration-200 hover:shadow-xl hover:scale-[1.02]
+              `}
             >
-              <X size={16} />
-            </button>
+              <div className="mt-0.5">{icons[t.type] || icons.info}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 leading-relaxed">
+                  {t.message}
+                </div>
+              </div>
+              <button
+                onClick={() => remove(t.id)}
+                className="text-gray-400 hover:text-gray-700 transition-colors duration-150 flex-shrink-0 hover:bg-white/50 rounded-md p-1"
+                type="button"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
         ))}
       </div>
+
+      <style>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </ToastContext.Provider>
   );
 };
