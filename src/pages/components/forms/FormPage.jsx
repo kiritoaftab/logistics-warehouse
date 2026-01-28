@@ -1,7 +1,9 @@
 import React from "react";
+import Breadcrumbs from "../header/Breadcrumbs";
 
 const FormPage = ({
   breadcrumb,
+  breadcrumbs,
   title,
   topActions,
   children,
@@ -9,11 +11,16 @@ const FormPage = ({
   bottomRight,
 }) => {
   return (
-    <div className="min-h-screen">
-      {/* Top Header Row */}
+    <div className="min-h-screen pb-20">
       <div className="pb-5">
-        {breadcrumb && (
-          <div className="text-xs text-gray-500 mb-1">{breadcrumb}</div>
+        {Array.isArray(breadcrumbs) && breadcrumbs.length > 0 ? (
+          <div className="mb-2">
+            <Breadcrumbs items={breadcrumbs} />
+          </div>
+        ) : (
+          breadcrumb && (
+            <div className="text-xs text-gray-500 mb-1">{breadcrumb}</div>
+          )
         )}
 
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -28,7 +35,7 @@ const FormPage = ({
       </div>
 
       {/* Content */}
-      <div className="">{children}</div>
+      <div>{children}</div>
 
       {/* Sticky Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t">
