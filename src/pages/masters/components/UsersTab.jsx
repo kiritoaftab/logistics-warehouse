@@ -102,8 +102,10 @@ const UsersTab = () => {
       const list = res?.data?.data?.users || [];
       setUsers(list);
     } catch (e) {
-      console.error(e);
-      alert("Failed to fetch users. Check token in sessionStorage.");
+      console.error(e?.response);
+      toast.error(
+        `${e?.response?.data?.message || e?.response?.data || "Failed to fetch users."}`,
+      );
     } finally {
       setLoading(false);
     }
