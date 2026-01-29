@@ -16,6 +16,10 @@ import PickExceptions from "../picking/PickExceptions";
 import Packing from "../packing/Packing";
 import Shipping from "../shipping/Shipping";
 import ShipmentDetail from "../shipping/ShipmentDetail";
+import Masters from "../masters/Masters";
+import OutboundOrders from "../outbound/OutboundOrders";
+import OrderDetail from "../outbound/OrderDetail";
+import CreateSalesOrder from "../outbound/CreateSalesOrder";
 
 const NewRoutes = [
   { path: "/", element: <Navigate to="/inventory" replace /> },
@@ -24,14 +28,16 @@ const NewRoutes = [
   { path: "/putawaydetails", element: <PutawayDetails /> },
   { path: "/inbound", element: <InboundASN /> },
   { path: "/createASN", element: <CreateASN /> },
-  { path: "/ASNdetails", element: <AsnDetail /> },
+  { path: "/ASNdetails/:id", element: <AsnDetail /> },
   { path: "/ASNreceive", element: <AsnReceiving /> },
+  { path: "/outbound", element: <OutboundOrders /> },
+  { path: "/orderDetails/:id", element: <OrderDetail /> },
+  { path: "/saleOrderCreate", element: <CreateSalesOrder /> },
+  { path: "/masters", element: <Masters /> },
   {
     path: "/inventory",
     element: <Inventory />,
-    children: [
-      { index: true, element: <InventoryStockBySKU /> }, // This is what shows at /inventory
-    ],
+    children: [{ index: true, element: <InventoryStockBySKU /> }],
   },
   { path: "/picking", element: <Picking /> },
   { path: "/packing", element: <Packing /> },
