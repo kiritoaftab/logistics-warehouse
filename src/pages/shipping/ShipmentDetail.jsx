@@ -47,21 +47,6 @@ const ShipmentDetail = ({ shipmentId = "SHP-2024-9901", onBack }) => {
     { id: "documents", label: "Documents", component: ShipmentDocuments },
     { id: "exceptions", label: "Exceptions", component: ShipmentExceptions },
     { id: "audit", label: "Audit", component: ShipmentAudit },
-    {
-      id: "documents",
-      label: "Documents",
-      component: () => <Placeholder title="Documents" />,
-    },
-    {
-      id: "exceptions",
-      label: "Exceptions",
-      component: () => <Placeholder title="Exceptions" />,
-    },
-    {
-      id: "audit",
-      label: "Audit",
-      component: () => <Placeholder title="Audit" />,
-    },
   ];
 
   const ActiveComponent = sections.find(

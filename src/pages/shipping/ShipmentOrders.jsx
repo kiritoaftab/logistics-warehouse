@@ -34,8 +34,8 @@ const ShipmentOrders = () => {
       </div>
 
       <div className="border-t">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
+        <div className="">
+          <table className="w-full min-w-[700px] text-left text-sm">
             <thead className="bg-gray-50 text-gray-500">
               <tr>
                 <th className="px-6 py-4 font-medium">Order No</th>

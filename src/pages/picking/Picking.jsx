@@ -77,7 +77,7 @@ const Picking = () => {
   const tabs = getTabs();
 
   return (
-    <div className="min-h-screen bg-[#E9F1FB] p-6">
+    <div className="min-h-screen s p-6">
       <div className="mx-auto 2xl:max-w-[1900px]">
         <PageHeader
           title="Picking"
