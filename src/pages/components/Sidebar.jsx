@@ -15,6 +15,7 @@ import {
   BarChart3,
   PackageCheck,
   HandGrab,
+  Settings,
 } from "lucide-react";
 import Header from "./Header";
 
@@ -31,6 +32,7 @@ const menuItems = [
   { name: "Billing", icon: ReceiptText, path: "/billing" },
   { name: "Masters", icon: Database, path: "/masters" },
   { name: "Reports", icon: BarChart3, path: "/reports" },
+  { name: "Setting", icon: Settings, path: "/setting" },
 ];
 
 const Sidebar = () => {

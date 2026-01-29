@@ -30,6 +30,7 @@ import PackProductivity from "../reports/PackProductivity";
 import OutboundSLA from "../reports/OutboundSLA";
 import BillingRevenue from "../reports/BillingRevenue";
 import Billing from "../billing/Billing";
+import Setting from "../onboarding/Setting";
 
 const NewRoutes = [
   { path: "/", element: <Navigate to="/inventory" replace /> },
@@ -64,5 +65,6 @@ const NewRoutes = [
   { path: "/shipping", element: <Shipping /> },
   { path: "/shippingdetails", element: <ShipmentDetail /> },
   { path: "/billing", element: <Billing /> },
+  { path: "/setting", element: <Setting /> },
 ];
 export default NewRoutes;
