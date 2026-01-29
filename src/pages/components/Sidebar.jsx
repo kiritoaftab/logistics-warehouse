@@ -13,6 +13,8 @@ import {
   ReceiptText,
   Database,
   BarChart3,
+  PackageCheck,
+  HandGrab,
 } from "lucide-react";
 import Header from "./Header";
 
@@ -22,7 +24,9 @@ const menuItems = [
   { name: "Putaway", icon: ClipboardList, path: "/putaway" },
   { name: "Inventory", icon: Boxes, path: "/inventory" },
   { name: "Outbound", icon: Upload, path: "/outbound" },
-  { name: "Picking", icon: Package, path: "/picking" },
+  { name: "Picking", icon: HandGrab, path: "/picking" },
+  { name: "Packing", icon: PackageCheck, path: "/packing" },
+
   { name: "Shipping", icon: Truck, path: "/shipping" },
   { name: "Billing", icon: ReceiptText, path: "/shipping" },
   { name: "Masters", icon: Database, path: "/shipping" },
