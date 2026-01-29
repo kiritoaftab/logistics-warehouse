@@ -1,0 +1,272 @@
+import React, { useMemo, useState } from "react";
+import { Download, Printer } from "lucide-react";
+
+import PageHeader from "../components/PageHeader";
+import FilterBar from "../components/FilterBar";
+import StatCard from "../components/StatCard";
+import CusTable from "../components/CusTable";
+import { StatusPill } from "./components/helper";
+
+export default function InboundTAT() {
+  // filters (UI only)
+  const [dateRange, setDateRange] = useState("This Month (Oct 2023)");
+  const [warehouse, setWarehouse] = useState("All Warehouses");
+  const [client, setClient] = useState("All Clients");
+  const [supplier, setSupplier] = useState("All Suppliers");
+
+  const filtersObj = useMemo(
+    () => ({ dateRange, warehouse, client, supplier }),
+    [dateRange, warehouse, client, supplier],
+  );
+
+  const handleApply = () => {
+    console.log("Apply Filters:", filtersObj);
+  };
+
+  const handleReset = () => {
+    setDateRange("This Month (Oct 2023)");
+    setWarehouse("All Warehouses");
+    setClient("All Clients");
+    setSupplier("All Suppliers");
+  };
+
+  const rows = [
+    {
+      id: "ASN-2023-001",
+      asnNo: "ASN-2023-001",
+      grnNo: "GRN-9982",
+      supplier: "Global Tech Supplies",
+      receivingStart: "Oct 24, 08:30",
+      grnTime: "Oct 24, 11:15",
+      putawayComplete: "Oct 24, 12:45",
+      totalTat: "4.25h",
+      status: "Completed",
+    },
+    {
+      id: "ASN-2023-005",
+      asnNo: "ASN-2023-005",
+      grnNo: "GRN-9988",
+      supplier: "MediCare Corp",
+      receivingStart: "Oct 24, 09:00",
+      grnTime: "Oct 24, 10:30",
+      putawayComplete: "Oct 24, 11:00",
+      totalTat: "2.0h",
+      status: "Completed",
+    },
+    {
+      id: "ASN-2023-012",
+      asnNo: "ASN-2023-012",
+      grnNo: "GRN-9991",
+      supplier: "FastFashion Ltd",
+      receivingStart: "Oct 23, 14:00",
+      grnTime: "Oct 23, 18:30",
+      putawayComplete: "Oct 24, 09:00",
+      totalTat: "19.0h",
+      status: "Delayed Putaway",
+    },
+    {
+      id: "ASN-2023-018",
+      asnNo: "ASN-2023-018",
+      grnNo: "GRN-9994",
+      supplier: "Office Depot Inc",
+      receivingStart: "Oct 23, 10:15",
+      grnTime: "Oct 23, 12:45",
+      putawayComplete: "Oct 23, 13:30",
+      totalTat: "3.25h",
+      status: "Completed",
+    },
+    {
+      id: "ASN-2023-022",
+      asnNo: "ASN-2023-022",
+      grnNo: "GRN-9999",
+      supplier: "Electro World",
+      receivingStart: "Oct 23, 08:00",
+      grnTime: "Oct 23, 11:00",
+      putawayComplete: "Oct 23, 11:45",
+      totalTat: "3.75h",
+      status: "Completed",
+    },
+    {
+      id: "ASN-2023-025",
+      asnNo: "ASN-2023-025",
+      grnNo: "GRN-10002",
+      supplier: "Pharma Plus",
+      receivingStart: "Oct 22, 16:00",
+      grnTime: "Oct 22, 18:00",
+      putawayComplete: "Oct 22, 18:45",
+      totalTat: "2.75h",
+      status: "Completed",
+    },
+  ];
+
+  const columns = [
+    {
+      key: "asnNo",
+      title: "ASN No",
+      render: (row) => (
+        <button className="text-blue-600 hover:underline">{row.asnNo}</button>
+      ),
+    },
+    {
+      key: "grnNo",
+      title: "GRN No",
+      render: (row) => (
+        <button className="text-blue-600 hover:underline">{row.grnNo}</button>
+      ),
+    },
+    { key: "supplier", title: "Supplier" },
+    { key: "receivingStart", title: "Receiving Start" },
+    { key: "grnTime", title: "GRN Time" },
+    { key: "putawayComplete", title: "Putaway Complete" },
+    {
+      key: "totalTat",
+      title: "Total TAT",
+      render: (row) => (
+        <span
+          className={
+            row.status === "Delayed Putaway"
+              ? "font-semibold text-orange-600"
+              : ""
+          }
+        >
+          {row.totalTat}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      title: "Status",
+      render: (row) => <StatusPill status={row.status} variant="inbound" />,
+    },
+    {
+      key: "actions",
+      title: "Actions",
+      render: () => (
+        <button className="text-blue-600 hover:underline">View</button>
+      ),
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5">
+        <PageHeader
+          title="Inbound Turnaround Time"
+          subtitle="Monitor inbound receiving and putaway efficiency"
+          breadcrumbs={[
+            { label: "Reports", to: "/reports" },
+            { label: "Inbound TAT" },
+          ]}
+          actions={
+            <>
+              <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">
+                Export CSV
+              </button>
+              <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">
+                Print
+              </button>
+            </>
+          }
+        />
+
+        {/* Filters */}
+        <div className="mt-3">
+          <FilterBar
+            filters={[
+              {
+                key: "dateRange",
+                label: "Date Range",
+                value: dateRange,
+                options: [
+                  "Today",
+                  "This Week",
+                  "This Month (Oct 2023)",
+                  "Last Month",
+                ],
+              },
+              {
+                key: "warehouse",
+                label: "Warehouse",
+                value: warehouse,
+                options: [
+                  "All Warehouses",
+                  "WH-NYC-01",
+                  "WH-LA-02",
+                  "WH-CHI-03",
+                ],
+              },
+              {
+                key: "client",
+                label: "Client",
+                value: client,
+                options: ["All Clients", "Acme Corp", "Globex", "Initech"],
+              },
+              {
+                key: "supplier",
+                label: "Supplier",
+                value: supplier,
+                options: [
+                  "All Suppliers",
+                  "Global Tech Supplies",
+                  "MediCare Corp",
+                  "Pharma Plus",
+                ],
+              },
+            ]}
+            onFilterChange={(key, val) => {
+              if (key === "dateRange") setDateRange(val);
+              if (key === "warehouse") setWarehouse(val);
+              if (key === "client") setClient(val);
+              if (key === "supplier") setSupplier(val);
+            }}
+            onApply={handleApply}
+            onReset={handleReset}
+            showActions={true}
+          />
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <StatCard
+            title="ASNs Received"
+            value="156"
+            accentColor="#2563EB"
+            subtext="vs last period"
+          />
+          <StatCard
+            title="Avg Inbound TAT"
+            value="4.2h"
+            accentColor="#0F766E"
+            subtext="Target: < 5.0h"
+          />
+          <StatCard
+            title="Avg Putaway Time"
+            value="0.5h"
+            accentColor="#7C3AED"
+            subtext="GRN to Shelf"
+            meta="- 0.0h"
+          />
+          <StatCard
+            title="SLA Compliance"
+            value="98.5%"
+            accentColor="#16A34A"
+            subtext="Inbound within 24h"
+          />
+        </div>
+
+        {/* Table */}
+        <div className="mt-6 rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-4 py-3">
+            <h3 className="text-sm font-semibold text-gray-900">
+              Drill-down: Received Shipments
+            </h3>
+          </div>
+
+          <div className="p-2">
+            <CusTable columns={columns} data={rows} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

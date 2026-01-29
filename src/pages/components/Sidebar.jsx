@@ -28,9 +28,9 @@ const menuItems = [
   { name: "Packing", icon: PackageCheck, path: "/packing" },
 
   { name: "Shipping", icon: Truck, path: "/shipping" },
-  { name: "Billing", icon: ReceiptText, path: "/shipping" },
+  { name: "Billing", icon: ReceiptText, path: "/billing" },
   { name: "Masters", icon: Database, path: "/masters" },
-  { name: "Reports", icon: BarChart3, path: "/shipping" },
+  { name: "Reports", icon: BarChart3, path: "/reports" },
 ];
 
 const Sidebar = () => {

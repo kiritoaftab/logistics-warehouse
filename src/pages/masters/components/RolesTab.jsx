@@ -384,7 +384,6 @@ const RolesTab = () => {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {/* LEFT: Roles CRUD */}
       <div>
         <div className="mb-4 flex items-center justify-end">
           <button
