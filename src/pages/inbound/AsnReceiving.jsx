@@ -7,9 +7,12 @@ import AttachmentsDropzone from "../components/forms/AttachmentsDropzone";
 
 import ReceivingSkuCard from "./components/receiving/ReceivingSkuCard";
 import ShortageCard from "./components/receiving/ShortageCard";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 const AsnReceiving = () => {
+  const { asnNo } = useParams();
+  const location = useLocation();
+  const { id } = location.state || {};
   const [attachments, setAttachments] = useState([]);
   const navigate = useNavigate();
   // right panel form
@@ -160,7 +163,7 @@ const AsnReceiving = () => {
     <FormPage
       breadcrumbs={[
         { label: "Inbound", to: "/inbound" },
-        { label: "ASN", to: "/inbound" },
+        { label: "ASN", to: `/ASNdetails/${id}` },
         { label: "Receiving" },
       ]}
       title="ASN Receiving"
@@ -305,10 +308,7 @@ const AsnReceiving = () => {
 
           <ShortageCard shortageUnits={50} />
 
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="text-sm font-semibold text-gray-900 mb-3">
-              Attachments
-            </div>
+          <div className="">
             <AttachmentsDropzone
               value={attachments}
               onChange={setAttachments}

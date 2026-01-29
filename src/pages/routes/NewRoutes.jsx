@@ -39,7 +39,7 @@ const NewRoutes = [
   { path: "/inbound", element: <InboundASN /> },
   { path: "/createASN", element: <CreateASN /> },
   { path: "/ASNdetails/:id", element: <AsnDetail /> },
-  { path: "/ASNreceive", element: <AsnReceiving /> },
+  { path: "/ASNreceive/:id", element: <AsnReceiving /> },
   { path: "/outbound", element: <OutboundOrders /> },
   { path: "/orderDetails/:id", element: <OrderDetail /> },
   { path: "/saleOrderCreate", element: <CreateSalesOrder /> },

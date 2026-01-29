@@ -260,7 +260,7 @@ const InboundASN = () => {
               Export
             </button>
             <button
-              onClick={() => navigate("/ASNreceive")}
+              onClick={() => toast.info("Coming soon! ")}
               className="px-4 py-2 border rounded-md text-sm bg-white w-full sm:w-auto"
             >
               Receive GRN
