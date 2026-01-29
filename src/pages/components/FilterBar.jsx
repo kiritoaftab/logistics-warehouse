@@ -26,9 +26,12 @@ const SelectBox = ({
   useOutsideClick(wrapRef, () => isOpen && onToggle(false));
 
   return (
-    <div ref={wrapRef} className={`relative flex flex-col gap-1 ${className}`}>
+    <div
+      ref={wrapRef}
+      className={`relative flex w-full flex-col gap-1 ${className}`}
+    >
+      {" "}
       <span className="text-[11px] font-medium text-gray-500">{label}</span>
-
       <button
         type="button"
         onClick={() => onToggle(!isOpen)}
@@ -37,7 +40,6 @@ const SelectBox = ({
         <span className="truncate">{value}</span>
         <ChevronDown size={16} className="text-gray-400" />
       </button>
-
       {isOpen && (
         <div className="absolute top-full mt-2 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm z-50">
           {options.map((opt) => (
@@ -66,12 +68,12 @@ const SearchBox = ({
   value,
   onChange,
 }) => (
-  <div className={`flex flex-col gap-1 ${className}`}>
+  <div className={`flex w-full flex-col gap-1 ${className}`}>
     <span className="text-[11px] font-medium text-gray-500">{label}</span>
     <input
       value={value || ""}
       onChange={(e) => onChange?.(e.target.value)}
-      className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+      className="h-9 w-full min-w-0 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
       placeholder={placeholder}
     />
   </div>
@@ -99,7 +101,7 @@ const FilterBar = ({
                   key={k}
                   label={f.label}
                   placeholder={f.placeholder}
-                  className={f.className}
+                  className={`w-full sm:w-[220px] ${f.className || ""}`}
                   value={f.value}
                   onChange={(val) => onFilterChange?.(f.key, val)}
                 />
@@ -112,7 +114,7 @@ const FilterBar = ({
                 label={f.label}
                 value={f.value}
                 options={f.options || []}
-                className={f.className}
+                className={`w-full sm:w-[220px] ${f.className || ""}`}
                 isOpen={openKey === k}
                 onToggle={(open) => setOpenKey(open ? k : null)}
                 onSelect={(val) => onFilterChange?.(f.key, val)}

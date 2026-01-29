@@ -91,7 +91,6 @@ const UsersTab = () => {
     setLoading(true);
     try {
       const res = await http.get("/users"); // token auto attached
-      console.log("Fetched users:", res?.data?.data?.users);
       const list = res?.data?.data?.users || [];
       setUsers(list);
     } catch (e) {

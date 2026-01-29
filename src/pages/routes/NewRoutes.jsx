@@ -20,6 +20,15 @@ import Masters from "../masters/Masters";
 import OutboundOrders from "../outbound/OutboundOrders";
 import OrderDetail from "../outbound/OrderDetail";
 import CreateSalesOrder from "../outbound/CreateSalesOrder";
+import Reports from "../reports/Reports";
+import InboundTAT from "../reports/InboundTAT";
+import PutawayAging from "../reports/PutawayAging";
+import InventoryAccuracy from "../reports/InventoryAccuracy";
+import SpaceUtilization from "../reports/SpaceUtilization";
+import PickProductivity from "../reports/PickProductivity";
+import PackProductivity from "../reports/PackProductivity";
+import OutboundSLA from "../reports/OutboundSLA";
+import BillingRevenue from "../reports/BillingRevenue";
 import Billing from "../billing/Billing";
 
 const NewRoutes = [
@@ -35,6 +44,16 @@ const NewRoutes = [
   { path: "/orderDetails/:id", element: <OrderDetail /> },
   { path: "/saleOrderCreate", element: <CreateSalesOrder /> },
   { path: "/masters", element: <Masters /> },
+  { path: "/reports", element: <Reports /> },
+  { path: "/inboundTAT", element: <InboundTAT /> },
+  { path: "/putawayAging", element: <PutawayAging /> },
+  { path: "/inventoryAccuracy", element: <InventoryAccuracy /> },
+  { path: "/spaceUtilization", element: <SpaceUtilization /> },
+  { path: "/pickProductivity", element: <PickProductivity /> },
+  { path: "/packProductivity", element: <PackProductivity /> },
+  { path: "/outboundSLA", element: <OutboundSLA /> },
+  { path: "/billingRevenue", element: <BillingRevenue /> },
+
   {
     path: "/inventory",
     element: <Inventory />,

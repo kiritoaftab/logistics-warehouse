@@ -53,7 +53,7 @@ const OrderDetail = () => {
       <div className="mb-3">
         <Breadcrumbs
           items={[
-            { label: "Outbound", to: "/outbound/orders" },
+            { label: "Outbound", to: "/outbound" },
             { label: "Order Detail" },
           ]}
         />
