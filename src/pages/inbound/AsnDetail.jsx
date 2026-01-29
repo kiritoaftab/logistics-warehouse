@@ -5,9 +5,10 @@ import AsnMetaBar from "./components/asndetails/AsnMetaBar";
 import ShipmentJourney from "./components/asndetails/ShipmentJourney";
 import KeyValueCard from "./components/asndetails/KeyValueCard";
 import QuantitySummary from "./components/asndetails/QuantitySummary";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const AsnDetail = () => {
+  const { id } = useParams();
   const asnNo = "ASN-10293";
   const navigate = useNavigate();
   const breadcrumbs = useMemo(
@@ -64,7 +65,7 @@ const AsnDetail = () => {
         rightLinks={[
           {
             label: "Open Receiving ↗",
-            onClick: () => console.log("open receiving"),
+            onClick: () => navigate(`/ASNreceive/${asnNo}`, { state: { id } }),
           },
           {
             label: "Putaway Tasks →",
