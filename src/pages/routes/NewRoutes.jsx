@@ -8,6 +8,11 @@ import AsnReceiving from "../inbound/AsnReceiving";
 import Inventory from "../inventory/Inventory";
 import InventoryStockBySKU from "../inventory/InventoryStockBySKU";
 import { useRoutes, Navigate } from "react-router-dom";
+import Picking from "../picking/Picking";
+import PickWaves from "../picking/PickWaves";
+import PickTasks from "../picking/PickTasks";
+import PickTaskDetail from "../picking/PickTaskDetail";
+import PickExceptions from "../picking/PickExceptions";
 
 const NewRoutes = [
   { path: "/", element: <Navigate to="/inventory" replace /> },
@@ -23,11 +28,8 @@ const NewRoutes = [
     element: <Inventory />,
     children: [
       { index: true, element: <InventoryStockBySKU /> }, // This is what shows at /inventory
-      // Add other child routes when you create them:
-      // { path: "location", element: <InventoryByLocation /> },
-      // { path: "holds", element: <InventoryHolds /> },
-      // { path: "transactions", element: <InventoryTransactions /> },
     ],
   },
+  { path: "/picking", element: <Picking /> },
 ];
 export default NewRoutes;
