@@ -16,6 +16,7 @@ import PickExceptions from "../picking/PickExceptions";
 import Packing from "../packing/Packing";
 import Shipping from "../shipping/Shipping";
 import ShipmentDetail from "../shipping/ShipmentDetail";
+import Billing from "../billing/Billing";
 
 const NewRoutes = [
   { path: "/", element: <Navigate to="/inventory" replace /> },
@@ -37,5 +38,6 @@ const NewRoutes = [
   { path: "/packing", element: <Packing /> },
   { path: "/shipping", element: <Shipping /> },
   { path: "/shippingdetails", element: <ShipmentDetail /> },
+  { path: "/billing", element: <Billing /> },
 ];
 export default NewRoutes;

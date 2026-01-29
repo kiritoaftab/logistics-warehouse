@@ -5,6 +5,9 @@ import ShipmentOverview from "./ShipmentOverview";
 import ShipmentOrders from "./ShipmentOrders";
 import ShipmentCartons from "./ShipmentCartons";
 import ShipmentTracking from "./ShipmentTracking";
+import ShipmentDocuments from "./ShipmentDocuments";
+import ShipmentExceptions from "./ShipmentExceptions";
+import ShipmentAudit from "./ShipmentAudit";
 
 // Optional placeholders (tabs shown in Figma sidebar)
 const Placeholder = ({ title }) => (
@@ -41,6 +44,9 @@ const ShipmentDetail = ({ shipmentId = "SHP-2024-9901", onBack }) => {
     { id: "orders", label: "Orders", component: ShipmentOrders },
     { id: "cartons", label: "Cartons", component: ShipmentCartons },
     { id: "tracking", label: "Tracking", component: ShipmentTracking },
+    { id: "documents", label: "Documents", component: ShipmentDocuments },
+    { id: "exceptions", label: "Exceptions", component: ShipmentExceptions },
+    { id: "audit", label: "Audit", component: ShipmentAudit },
     {
       id: "documents",
       label: "Documents",
