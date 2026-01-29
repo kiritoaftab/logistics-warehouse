@@ -16,6 +16,7 @@ import PickWaves from "../picking/PickWaves";
 import PickTasks from "../picking/PickTasks";
 import PickTaskDetail from "../picking/PickTaskDetail";
 import PickExceptions from "../picking/PickExceptions";
+import Masters from "../masters/Masters";
 
 const NewRoutes = [
   { path: "/", element: <Navigate to="/inventory" replace /> },
@@ -28,7 +29,8 @@ const NewRoutes = [
   { path: "/ASNreceive", element: <AsnReceiving /> },
   { path: "/outbound", element: <OutboundOrders /> },
   { path: "/saleOrderCreate", element: <CreateSalesOrder /> },
-  { path: "/orderDetails", element: <OrderDetail /> },
+  { path: "/orderDetails/:id", element: <OrderDetail /> },
+  { path: "/masters", element: <Masters /> },
   {
     path: "/inventory",
     element: <Inventory />,

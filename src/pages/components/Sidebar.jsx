@@ -29,7 +29,7 @@ const menuItems = [
 
   { name: "Shipping", icon: Truck, path: "/shipping" },
   { name: "Billing", icon: ReceiptText, path: "/shipping" },
-  { name: "Masters", icon: Database, path: "/shipping" },
+  { name: "Masters", icon: Database, path: "/masters" },
   { name: "Reports", icon: BarChart3, path: "/shipping" },
 ];
 
@@ -37,7 +37,8 @@ const Sidebar = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-[#F6F8FA] overflow-x-hidden">
+    <div className="flex h-screen bg-[#F6F8FA] overflow-hidden">
+      {" "}
       {/* Mobile Toggle */}
       <button
         className="sm:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-md shadow"
@@ -45,7 +46,6 @@ const Sidebar = () => {
       >
         {open ? <X /> : <Menu />}
       </button>
-
       {/* Overlay */}
       {open && (
         <div
@@ -53,48 +53,78 @@ const Sidebar = () => {
           className="fixed inset-0 bg-black/40 z-30 sm:hidden"
         />
       )}
-
       {/* Sidebar */}
       <aside
-        className={`fixed sm:static top-0 left-0 h-auto w-64 bg-white border-r border-gray-200 z-40
-        transform transition-transform duration-300
-        ${open ? "translate-x-0" : "-translate-x-full"}
-        sm:translate-x-0`}
+        className={`fixed sm:sticky sm:top-0 top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 z-40
+  transform transition-transform duration-300
+  ${open ? "translate-x-0" : "-translate-x-full"}
+  sm:translate-x-0`}
       >
-        {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b">
-          <h1 className="text-xl font-bold text-gray-900">
-            NEXUS <span className="text-primary">WMS</span>
-          </h1>
-        </div>
+        {/* Wrapper */}
+        <div className="flex h-full flex-col">
+          {/* Logo */}
+          <div className="h-16 flex items-center px-6 border-b">
+            <h1 className="text-xl font-bold text-gray-900">
+              NEXUS <span className="text-primary">WMS</span>
+            </h1>
+          </div>
 
-        {/* Menu */}
-        <nav className="p-3 space-y-1">
-          {menuItems.map(({ name, icon: Icon, path }) => (
-            <NavLink
-              key={name}
-              to={path}
-              onClick={() => setOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition
-                ${
-                  isActive
-                    ? "bg-primary text-white"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`
-              }
+          {/* Menu (scrollable) */}
+          <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+            {menuItems.map(({ name, icon: Icon, path }) => (
+              <NavLink
+                key={name}
+                to={path}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition
+            ${
+              isActive
+                ? "bg-primary text-white"
+                : "text-gray-600 hover:bg-gray-100"
+            }`
+                }
+              >
+                <Icon className="w-5 h-5" />
+                {name}
+              </NavLink>
+            ))}
+          </nav>
+
+          {/* Logout */}
+          <div className="mt-auto border-t p-3">
+            {" "}
+            <button
+              onClick={() => {
+                sessionStorage.clear();
+                localStorage.clear();
+                window.location.href = "/";
+              }}
+              className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50"
             >
-              <Icon className="w-5 h-5" />
-              {name}
-            </NavLink>
-          ))}
-        </nav>
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1m0-9V4"
+                />
+              </svg>
+              Logout
+            </button>
+          </div>
+        </div>
       </aside>
-
       {/* Content Area */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex flex-col h-screen">
         <Header />
-        <main className="p-4 md:p-6 overflow-x-hidden">
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <Outlet />
         </main>
       </div>

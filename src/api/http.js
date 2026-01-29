@@ -7,7 +7,7 @@ const http = axios.create({
 
 http.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem("token");
+    const token = sessionStorage.getItem("auth_token");
     const requiresAuth = config.requiresAuth ?? true;
 
     if (requiresAuth && token) {

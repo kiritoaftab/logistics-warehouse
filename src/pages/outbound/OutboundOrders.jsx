@@ -273,7 +273,10 @@ const OutboundOrders = () => {
             <button className="px-3 py-1.5 text-xs rounded-md border bg-white">
               {row.actionLabel}
             </button>
-            <button className="px-2 py-1.5 rounded-md border bg-white">
+            <button
+              onClick={() => navigate(`/orderDetails/:${row.id}`)}
+              className="px-2 py-1.5 rounded-md border bg-white"
+            >
               <MoreHorizontal size={16} />
             </button>
           </div>
