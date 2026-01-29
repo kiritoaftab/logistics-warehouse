@@ -13,6 +13,8 @@ import PickWaves from "../picking/PickWaves";
 import PickTasks from "../picking/PickTasks";
 import PickTaskDetail from "../picking/PickTaskDetail";
 import PickExceptions from "../picking/PickExceptions";
+import Packing from "../packing/Packing";
+import Shipping from "../shipping/Shipping";
 
 const NewRoutes = [
   { path: "/", element: <Navigate to="/inventory" replace /> },
@@ -31,5 +33,7 @@ const NewRoutes = [
     ],
   },
   { path: "/picking", element: <Picking /> },
+  { path: "/packing", element: <Packing /> },
+  { path: "/shipping", element: <Shipping /> },
 ];
 export default NewRoutes;
