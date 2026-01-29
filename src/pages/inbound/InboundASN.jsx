@@ -238,7 +238,7 @@ const InboundASN = () => {
             </button>
             <button
               className="text-gray-500 hover:text-gray-700"
-              onClick={() => console.log("more", row.id)}
+              onClick={() => navigate(`/ASNdetails/${row.id}`)}
             >
               <MoreHorizontal size={16} />
             </button>

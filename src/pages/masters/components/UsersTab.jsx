@@ -1,0 +1,521 @@
+import React, { use, useEffect, useMemo, useState } from "react";
+import FilterBar from "../../components/FilterBar";
+import CusTable from "../../components/CusTable";
+import http from "../../../api/http";
+import { Field, Modal } from "./helper";
+import ConfirmDeleteModal from "../../components/modals/ConfirmDeleteModal";
+import { useToast } from "../../components/toast/ToastProvider";
+
+const emptyUser = {
+  username: "",
+  email: "",
+  password: "",
+  first_name: "",
+  last_name: "",
+  phone: "",
+};
+
+const UsersTab = () => {
+  const toast = useToast();
+  const [filtersState, setFiltersState] = useState({
+    search: "",
+    status: "All",
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState([]);
+
+  // modal
+  const [showForm, setShowForm] = useState(false);
+  const [mode, setMode] = useState("create"); // create | edit
+  const [activeUser, setActiveUser] = useState(null);
+  const [form, setForm] = useState(emptyUser);
+
+  // change password
+  const [showPwd, setShowPwd] = useState(false);
+  const [pwdUser, setPwdUser] = useState(null);
+  const [pwdForm, setPwdForm] = useState({
+    old_password: "",
+    new_password: "",
+  });
+
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteUserObj, setDeleteUserObj] = useState(null);
+  const [pwdErrors, setPwdErrors] = useState({});
+  const [errors, setErrors] = useState({});
+  const [formErrors, setFormErrors] = useState({});
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Email validation
+    if (!form.email) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      newErrors.email = "Invalid email format";
+    }
+
+    // Phone validation (10 digits)
+    if (!form.phone) {
+      newErrors.phone = "Phone is required";
+    } else if (!/^\d{10}$/.test(form.phone)) {
+      newErrors.phone = "Phone must be 10 digits";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const filters = [
+    {
+      key: "search",
+      type: "search",
+      label: "Search",
+      placeholder: "Search username / email / phone...",
+      value: filtersState.search,
+      className: "w-[360px]",
+    },
+    {
+      key: "status",
+      label: "Status",
+      value: filtersState.status,
+      options: ["All", "Active", "Inactive"],
+      className: "w-[200px]",
+    },
+  ];
+
+  const onFilterChange = (key, val) =>
+    setFiltersState((p) => ({ ...p, [key]: val }));
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const res = await http.get("/users"); // token auto attached
+      console.log("Fetched users:", res?.data?.data?.users);
+      const list = res?.data?.data?.users || [];
+      setUsers(list);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to fetch users. Check token in sessionStorage.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const onReset = () => setFiltersState({ search: "", status: "All" });
+  const onApply = () => {}; // optional (FilterBar requires buttons)
+
+  const filteredUsers = useMemo(() => {
+    const q = (filtersState.search || "").toLowerCase().trim();
+    const status = filtersState.status;
+
+    return users.filter((u) => {
+      const matchesQ =
+        !q ||
+        `${u.username || ""} ${u.email || ""} ${u.phone || ""}`
+          .toLowerCase()
+          .includes(q);
+
+      const isActive = u.is_active ?? u.active ?? true;
+      const matchesStatus =
+        status === "All" ||
+        (status === "Active" && isActive) ||
+        (status === "Inactive" && !isActive);
+
+      return matchesQ && matchesStatus;
+    });
+  }, [users, filtersState]);
+
+  const openCreate = () => {
+    setMode("create");
+    setActiveUser(null);
+    setForm(emptyUser);
+    setShowForm(true);
+  };
+
+  const openEdit = (u) => {
+    setMode("edit");
+    setActiveUser(u);
+    setForm({
+      username: u.username || "",
+      email: u.email || "",
+      password: "",
+      first_name: u.first_name || "",
+      last_name: u.last_name || "",
+      phone: u.phone || "",
+    });
+    setShowForm(true);
+  };
+
+  const submitForm = async () => {
+    if (mode === "create") {
+      const errs = {};
+
+      if (!form.password) {
+        errs.password = "Password is required";
+      } else if (form.password.length < 8) {
+        errs.password = "Minimum 8 characters required";
+      }
+
+      if (Object.keys(errs).length > 0) {
+        setFormErrors(errs);
+        return;
+      }
+    }
+
+    try {
+      setLoading(true);
+
+      if (mode === "create") {
+        await http.post("/users", form);
+      } else {
+        const id = activeUser?.id || activeUser?._id;
+        await http.put(`/users/${id}`, {
+          username: form.username,
+          email: form.email,
+          first_name: form.first_name,
+          last_name: form.last_name,
+          phone: form.phone,
+        });
+      }
+      toast.success(
+        `User ${mode === "create" ? "created" : "updated"} successfully.`,
+      );
+      setShowForm(false);
+      setFormErrors({});
+      await fetchUsers();
+    } catch (e) {
+      console.log("RESPONSE:", e?.response);
+      const data = e?.response?.data;
+      if (!data) {
+        toast.error("Network error. Please try again.");
+        return;
+      }
+      toast.error(data.message || "Request failed");
+      if (Array.isArray(data.errors)) {
+        const fieldErrors = {};
+        data.errors.forEach((err) => {
+          fieldErrors[err.field] = err.message;
+        });
+        setFormErrors(fieldErrors);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteUser = (u) => {
+    setDeleteUserObj(u);
+    setShowDelete(true);
+  };
+
+  const confirmDelete = async () => {
+    const u = deleteUserObj;
+    if (!u) return;
+
+    const id = u?.id || u?._id;
+
+    try {
+      setLoading(true);
+      await http.delete(`/users/${id}`);
+      toast.success("User deleted successfully.");
+      setShowDelete(false);
+      setDeleteUserObj(null);
+      await fetchUsers();
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete user.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openChangePassword = (u) => {
+    setPwdUser(u);
+    setPwdForm({ old_password: "", new_password: "" });
+    setShowPwd(true);
+  };
+
+  const submitPassword = async () => {
+    if (!validatePasswordForm()) return;
+
+    const id = pwdUser?.id || pwdUser?._id;
+    try {
+      setLoading(true);
+      await http.put(`/users/${id}/password`, pwdForm);
+      setShowPwd(false);
+      setPwdErrors({});
+      toast.success("Password changed successfully.");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to change password.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const columns = useMemo(
+    () => [
+      { key: "username", title: "Username" },
+      { key: "email", title: "Email" },
+      {
+        key: "name",
+        title: "Name",
+        render: (row) =>
+          `${row.first_name || ""} ${row.last_name || ""}`.trim() || "-",
+      },
+      { key: "phone", title: "Phone" },
+      {
+        key: "status",
+        title: "Status",
+        render: (row) => {
+          const isActive = row.is_active ?? row.active ?? true;
+          return (
+            <span
+              className={[
+                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                isActive
+                  ? "bg-green-100 text-green-700"
+                  : "bg-gray-100 text-gray-700",
+              ].join(" ")}
+            >
+              {isActive ? "Active" : "Inactive"}
+            </span>
+          );
+        },
+      },
+      {
+        key: "actions",
+        title: "Actions",
+        render: (row) => (
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
+              onClick={() => openEdit(row)}
+            >
+              Edit
+            </button>
+            <button
+              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
+              onClick={() => openChangePassword(row)}
+            >
+              Password
+            </button>
+            <button
+              className="rounded-md bg-red-600 px-3 py-1.5 text-xs text-white"
+              onClick={() => deleteUser(row)}
+            >
+              Delete
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const validatePasswordForm = () => {
+    const errs = {};
+
+    if (!pwdForm.old_password) {
+      errs.old_password = "Old password is required";
+    }
+
+    if (!pwdForm.new_password) {
+      errs.new_password = "New password is required";
+    } else if (pwdForm.new_password.length < 8) {
+      errs.new_password = "Minimum 8 characters required";
+    }
+
+    setPwdErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-end">
+        <button
+          onClick={openCreate}
+          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+        >
+          + Add User
+        </button>
+      </div>
+
+      <FilterBar
+        filters={filters}
+        onFilterChange={onFilterChange}
+        onApply={onApply}
+        onReset={onReset}
+      />
+
+      <div className="rounded-lg border border-gray-200 bg-white p-2">
+        {loading ? (
+          <div className="p-6 text-sm text-gray-600">Loading...</div>
+        ) : (
+          <CusTable columns={columns} data={filteredUsers} />
+        )}
+      </div>
+
+      {showForm && (
+        <Modal
+          title={mode === "create" ? "Add User" : "Edit User"}
+          subtitle={
+            mode === "create"
+              ? "Create a new user (token required)."
+              : "Update user details."
+          }
+          onClose={() => {
+            setShowForm(false);
+            setFormErrors({});
+          }}
+          footer={
+            <>
+              <button
+                onClick={() => setShowForm(false)}
+                className="rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={loading}
+                onClick={submitForm}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-60"
+              >
+                {mode === "create" ? "Create" : "Update"}
+              </button>
+            </>
+          }
+        >
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field
+              label="Username"
+              value={form.username}
+              required
+              error={formErrors.username}
+              onChange={(v) => setForm((p) => ({ ...p, username: v }))}
+            />
+            <Field
+              label="Email"
+              required
+              value={form.email}
+              error={errors.email}
+              onChange={(v) => {
+                setForm((p) => ({ ...p, email: v }));
+                setErrors((e) => ({ ...e, email: "" }));
+              }}
+            />
+            <Field
+              label="First Name"
+              value={form.first_name}
+              error={formErrors.first_name}
+              onChange={(v) => setForm((p) => ({ ...p, first_name: v }))}
+            />
+            <Field
+              label="Last Name"
+              value={form.last_name}
+              error={formErrors.last_name}
+              onChange={(v) => setForm((p) => ({ ...p, last_name: v }))}
+            />
+            <Field
+              label="Phone"
+              required
+              value={form.phone}
+              error={errors.phone}
+              onChange={(v) => {
+                if (v.length > 10) return;
+                if (!/^\d*$/.test(v)) return;
+
+                setForm((p) => ({ ...p, phone: v }));
+                setErrors((e) => ({ ...e, phone: "" }));
+              }}
+            />
+            {mode === "create" && (
+              <Field
+                label="Password"
+                type="password"
+                required
+                value={form.password}
+                error={formErrors.password}
+                onChange={(v) => {
+                  setForm((p) => ({ ...p, password: v }));
+                  setFormErrors((e) => ({ ...e, password: "" }));
+                }}
+              />
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {showPwd && (
+        <Modal
+          title="Change Password"
+          subtitle={pwdUser?.username || ""}
+          onClose={() => setShowPwd(false)}
+          footer={
+            <>
+              <button
+                onClick={() => setShowPwd(false)}
+                className="rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={loading}
+                onClick={submitPassword}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-60"
+              >
+                Update Password
+              </button>
+            </>
+          }
+        >
+          <div className="space-y-3">
+            <Field
+              label="Old Password"
+              type="password"
+              required
+              value={pwdForm.old_password}
+              error={pwdErrors.old_password}
+              onChange={(v) => {
+                setPwdForm((p) => ({ ...p, old_password: v }));
+                setPwdErrors((e) => ({ ...e, old_password: "" }));
+              }}
+            />
+
+            <Field
+              label="New Password"
+              type="password"
+              required
+              value={pwdForm.new_password}
+              error={pwdErrors.new_password}
+              onChange={(v) => {
+                setPwdForm((p) => ({ ...p, new_password: v }));
+                setPwdErrors((e) => ({ ...e, new_password: "" }));
+              }}
+            />
+          </div>
+        </Modal>
+      )}
+
+      <ConfirmDeleteModal
+        open={showDelete}
+        title="Delete User"
+        message={`Are you sure you want to delete "${deleteUserObj?.username || ""}"?`}
+        loading={loading}
+        onClose={() => {
+          if (loading) return;
+          setShowDelete(false);
+          setDeleteUserObj(null);
+        }}
+        onConfirm={confirmDelete}
+      />
+    </div>
+  );
+};
+
+export default UsersTab;
