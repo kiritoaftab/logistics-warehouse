@@ -6,6 +6,7 @@ import http from "../../../api/http";
 import { Field, Modal } from "./helper";
 import ConfirmDeleteModal from "../../components/modals/ConfirmDeleteModal";
 import { useToast } from "../../components/toast/ToastProvider";
+import Pagination from "../../components/Pagination";
 
 const emptyUser = {
   username: "",
@@ -53,25 +54,15 @@ const UsersTab = () => {
   const [assignedRoleIds, setAssignedRoleIds] = useState([]);
   const [initialRoleIds, setInitialRoleIds] = useState([]);
 
-  const validateForm = () => {
-    const newErrors = {};
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pages: 1,
+    total: 0,
+    limit: 5,
+  });
 
-    // Email validation
-    if (!form.email) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      newErrors.email = "Invalid email format";
-    }
-
-    // Phone validation (10 digits)
-    if (!form.phone) {
-      newErrors.phone = "Phone is required";
-    } else if (!/^\d{10}$/.test(form.phone)) {
-      newErrors.phone = "Phone must be 10 digits";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handlePageChange = (newPage) => {
+    fetchUsers(newPage);
   };
 
   const filters = [
@@ -95,12 +86,15 @@ const UsersTab = () => {
   const onFilterChange = (key, val) =>
     setFiltersState((p) => ({ ...p, [key]: val }));
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = 1) => {
     setLoading(true);
     try {
-      const res = await http.get("/users");
+      const res = await http.get(
+        `/users?page=${page}&limit=${pagination?.limit}`,
+      );
       const list = res?.data?.data?.users || [];
       setUsers(list);
+      setPagination(res?.data?.data?.pagination || pagination);
     } catch (e) {
       console.error(e?.response);
       toast.error(
@@ -112,7 +106,7 @@ const UsersTab = () => {
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(1);
   }, []);
 
   const onReset = () => setFiltersState({ search: "", status: "All" });
@@ -412,7 +406,6 @@ const UsersTab = () => {
     const userId = u?.id || u?._id;
     if (!userId) return;
 
-    const toAdd = assignedRoleIds.filter((id) => !initialRoleIds.includes(id));
     const toRemove = initialRoleIds.filter(
       (id) => !assignedRoleIds.includes(id),
     );
@@ -421,10 +414,10 @@ const UsersTab = () => {
       setLoading(true);
 
       // Add new roles (bulk)
-      if (toAdd.length) {
+      if (assignedRoleIds.length) {
         await http.post("/user-roles/bulk", {
           user_id: userId,
-          role_ids: toAdd,
+          role_ids: assignedRoleIds,
         });
       }
 
@@ -474,7 +467,13 @@ const UsersTab = () => {
         {loading ? (
           <div className="p-6 text-sm text-gray-600">Loading...</div>
         ) : (
-          <CusTable columns={columns} data={filteredUsers} />
+          <>
+            <CusTable columns={columns} data={filteredUsers} />
+            <Pagination
+              pagination={pagination}
+              onPageChange={handlePageChange}
+            />
+          </>
         )}
       </div>
 
@@ -517,6 +516,7 @@ const UsersTab = () => {
               onChange={(v) => setForm((p) => ({ ...p, username: v }))}
             />
             <Field
+              type="email"
               label="Email"
               required
               value={form.email}
