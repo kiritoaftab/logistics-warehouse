@@ -90,7 +90,7 @@ const FilterBar = ({
 
   return (
     <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
-      <div className="flex flex-wrap items-end gap-4">
+      <div className="flex flex-wrap items-start gap-4">
         <div className="flex flex-1 flex-wrap items-end gap-4">
           {filters.map((f, idx) => {
             const k = f.key || idx;
@@ -124,8 +124,7 @@ const FilterBar = ({
         </div>
 
         {showActions && (
-          <div className="ml-auto flex items-center gap-3">
-            {/* ✅ Figma order: Apply then Reset */}
+          <div className="ml-auto flex items-center gap-3 pt-4">
             <button
               type="button"
               onClick={onApply}

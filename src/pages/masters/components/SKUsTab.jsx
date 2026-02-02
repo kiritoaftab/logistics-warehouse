@@ -1,22 +1,93 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import FilterBar from "../../components/FilterBar";
 import CusTable from "../../components/CusTable";
-import { Pencil, MoreVertical } from "lucide-react";
+import Pagination from "../../components/Pagination";
+import { Pencil } from "lucide-react";
+import http from "../../../api/http";
+import AddSkuModal from "./modals/AddSkuModal";
 
 const SKUsTab = () => {
   const [filtersState, setFiltersState] = useState({
-    client: "Acme Corp",
+    client: "All Clients",
     category: "All Categories",
     controls: "Any",
     search: "",
   });
+
+  const [loading, setLoading] = useState(false);
+  const [skus, setSkus] = useState([]);
+  const [clients, setClients] = useState([]);
+
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    pages: 1,
+    limit: 10,
+  });
+
+  // modal
+  const [showSkuModal, setShowSkuModal] = useState(false);
+  const [skuMode, setSkuMode] = useState("create"); // create | edit
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [editingSku, setEditingSku] = useState(null);
+
+  const onFilterChange = (key, val) =>
+    setFiltersState((p) => ({ ...p, [key]: val }));
+
+  const onReset = () => {
+    setFiltersState({
+      client: "All Clients",
+      category: "All Categories",
+      controls: "Any",
+      search: "",
+    });
+    fetchSkus(1);
+  };
+
+  const onApply = () => fetchSkus(1);
+
+  const fetchClients = async () => {
+    // for dropdown only (cheap)
+    const res = await http.get("/clients?page=1&limit=200");
+    setClients(res?.data?.data?.clients || []);
+  };
+
+  const fetchSkus = async (page = 1) => {
+    try {
+      setLoading(true);
+      const limit = pagination.limit || 10;
+
+      // If your backend supports filters, pass them here.
+      // For now: server pagination + client-side filters
+      const res = await http.get(`/skus?page=${page}&limit=${limit}`);
+      const payload = res?.data?.data;
+
+      setSkus(payload?.skus || payload?.items || payload || []); // supports different response shapes
+      setPagination(
+        payload?.pagination || { total: 0, page: 1, pages: 1, limit },
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+    fetchSkus(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const clientOptions = useMemo(() => {
+    const names = (clients || []).map((c) => c.client_name);
+    return ["All Clients", ...names];
+  }, [clients]);
 
   const filters = [
     {
       key: "client",
       label: "Client",
       value: filtersState.client,
-      options: ["Acme Corp", "Globex", "Umbrella"],
+      options: clientOptions,
       className: "w-[220px]",
     },
     {
@@ -51,130 +122,63 @@ const SKUsTab = () => {
     },
   ];
 
-  const onFilterChange = (key, val) =>
-    setFiltersState((p) => ({ ...p, [key]: val }));
-
-  const onReset = () =>
-    setFiltersState({
-      client: "Acme Corp",
-      category: "All Categories",
-      controls: "Any",
-      search: "",
-    });
-
-  const onApply = () => {}; // UI only
-
-  // UI only sample data
-  const rows = useMemo(
-    () => [
-      {
-        id: "SKU-10045",
-        sku_code: "SKU-10045",
-        barcode: "8901234567890",
-        name: "Wireless Headphones XL",
-        category: "Electronics",
-        uom: "Units",
-        controls: ["Serial"],
-        putaway_zone: "High Value Cage",
-        pick_rule: "FIFO",
-        status: "Active",
-      },
-      {
-        id: "SKU-20221",
-        sku_code: "SKU-20221",
-        barcode: "8909876543210",
-        name: "Organic Green Tea 100g",
-        category: "FMCG",
-        uom: "Pack",
-        controls: ["Batch", "Expiry"],
-        putaway_zone: "Ambient Storage",
-        pick_rule: "FEFO",
-        status: "Active",
-      },
-      {
-        id: "SKU-55001",
-        sku_code: "SKU-55001",
-        barcode: "N/A",
-        name: "Cotton T-Shirt Large",
-        category: "Apparel",
-        uom: "Units",
-        controls: [],
-        putaway_zone: "Apparel Mezzanine",
-        pick_rule: "FIFO",
-        status: "Active",
-      },
-      {
-        id: "SKU-99100",
-        sku_code: "SKU-99100",
-        barcode: "778899001122",
-        name: "Frozen Peas 1kg",
-        category: "Food",
-        uom: "Bag",
-        controls: ["Batch", "Expiry"],
-        putaway_zone: "Cold Storage A",
-        pick_rule: "FEFO",
-        status: "Inactive",
-      },
-      {
-        id: "SKU-88002",
-        sku_code: "SKU-88002",
-        barcode: "556677889900",
-        name: "Glass Vase Decorative",
-        category: "Home",
-        uom: "Box",
-        controls: ["Fragile"],
-        putaway_zone: "Fragile Zone",
-        pick_rule: "FIFO",
-        status: "Active",
-      },
-      {
-        id: "SKU-30045",
-        sku_code: "SKU-30045",
-        barcode: "998877665544",
-        name: "Almond Milk 1L",
-        category: "Food",
-        uom: "Carton",
-        controls: ["Batch", "Expiry"],
-        putaway_zone: "Ambient Storage",
-        pick_rule: "FEFO",
-        status: "Active",
-      },
-      {
-        id: "SKU-70707",
-        sku_code: "SKU-70707",
-        barcode: "111222333444",
-        name: "Office Chair Ergonomic",
-        category: "Furniture",
-        uom: "Units",
-        controls: [],
-        putaway_zone: "Bulk Storage",
-        pick_rule: "FIFO",
-        status: "Active",
-      },
-    ],
-    [],
-  );
+  const mapControls = (r) => {
+    const list = [];
+    if (r.requires_serial_tracking) list.push("Serial");
+    if (r.requires_batch_tracking) list.push("Batch");
+    if (r.requires_expiry_tracking) list.push("Expiry");
+    if (r.fragile) list.push("Fragile");
+    if (r.hazardous) list.push("Hazardous");
+    return list;
+  };
 
   const filteredRows = useMemo(() => {
     const q = (filtersState.search || "").toLowerCase().trim();
 
-    return rows.filter((r) => {
+    return (skus || []).filter((r) => {
       const matchesSearch =
-        !q || `${r.sku_code} ${r.barcode} ${r.name}`.toLowerCase().includes(q);
+        !q || `${r.sku_code} ${r.sku_name}`.toLowerCase().includes(q);
 
       const matchesCategory =
         filtersState.category === "All Categories" ||
-        r.category === filtersState.category;
+        (r.category || "") === filtersState.category;
 
-      const hasControls = (r.controls || []).length > 0;
+      const controls = mapControls(r);
+      const hasControls = controls.length > 0;
       const matchesControls =
         filtersState.controls === "Any" ||
         (filtersState.controls === "With Controls" && hasControls) ||
         (filtersState.controls === "No Controls" && !hasControls);
 
-      return matchesSearch && matchesCategory && matchesControls;
+      const clientName = r.client_name || r.client?.client_name; // if API embeds
+      const matchesClient =
+        filtersState.client === "All Clients" ||
+        clientName === filtersState.client;
+
+      return (
+        matchesSearch && matchesCategory && matchesControls && matchesClient
+      );
     });
-  }, [rows, filtersState]);
+  }, [skus, filtersState]);
+
+  const openCreate = () => {
+    // if you want enforce a client selection for create, you can choose first client or show warning
+    setSkuMode("create");
+    setEditingSku(null);
+    setSelectedClient(null);
+    setShowSkuModal(true);
+  };
+
+  const openEdit = async (row) => {
+    // safer: fetch single sku for full fields
+    const res = await http.get(`/skus/${row.id}`);
+    const sku = res?.data?.data || res?.data;
+
+    setSkuMode("edit");
+    setEditingSku(sku);
+    setSelectedClient(null);
+    setShowSkuModal(true);
+  };
 
   const columns = useMemo(
     () => [
@@ -186,18 +190,17 @@ const SKUsTab = () => {
             <div className="text-sm font-semibold text-blue-600">
               {row.sku_code}
             </div>
-            <div className="text-xs text-gray-500">{row.barcode}</div>
+            <div className="text-xs text-gray-500">{row.sku_name}</div>
           </div>
         ),
       },
-      { key: "name", title: "Name" },
       { key: "category", title: "Category" },
-      { key: "uom", title: "UOM" },
+      { key: "uom", title: "UOM", render: (row) => row.uom || "-" },
       {
         key: "controls",
         title: "Controls",
         render: (row) => {
-          const list = row.controls || [];
+          const list = mapControls(row);
           if (!list.length) return <span className="text-gray-500">-</span>;
           return (
             <div className="flex flex-wrap gap-1">
@@ -213,13 +216,21 @@ const SKUsTab = () => {
           );
         },
       },
-      { key: "putaway_zone", title: "Putaway Zone" },
-      { key: "pick_rule", title: "Pick Rule" },
+      {
+        key: "putaway_zone",
+        title: "Putaway Zone",
+        render: (row) => row.putaway_zone || "-",
+      },
+      {
+        key: "pick_rule",
+        title: "Pick Rule",
+        render: (row) => row.pick_rule || "-",
+      },
       {
         key: "status",
         title: "Status",
         render: (row) => {
-          const isActive = row.status === "Active";
+          const isActive = row.is_active !== false; // default active
           return (
             <span
               className={[
@@ -229,7 +240,7 @@ const SKUsTab = () => {
                   : "bg-gray-100 text-gray-700",
               ].join(" ")}
             >
-              {row.status}
+              {isActive ? "Active" : "Inactive"}
             </span>
           );
         },
@@ -237,29 +248,21 @@ const SKUsTab = () => {
       {
         key: "actions",
         title: "Actions",
-        render: () => (
+        render: (row) => (
           <div className="flex items-center gap-2">
             <button
               type="button"
               className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
               title="Edit"
-              onClick={() => {}}
+              onClick={() => openEdit(row)}
             >
               <Pencil className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="More"
-              onClick={() => {}}
-            >
-              <MoreVertical className="h-4 w-4" />
             </button>
           </div>
         ),
       },
     ],
-    [],
+    [clients, filtersState],
   );
 
   return (
@@ -267,7 +270,7 @@ const SKUsTab = () => {
       <div className="mb-4 flex items-center justify-end">
         <button
           type="button"
-          onClick={() => {}}
+          onClick={openCreate}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
         >
           + Add SKU
@@ -282,8 +285,27 @@ const SKUsTab = () => {
       />
 
       <div className="rounded-lg border border-gray-200 bg-white p-2">
-        <CusTable columns={columns} data={filteredRows} />
+        {loading ? (
+          <div className="p-6 text-sm text-gray-600">Loading SKUs...</div>
+        ) : (
+          <CusTable columns={columns} data={filteredRows} />
+        )}
+
+        <Pagination
+          pagination={pagination}
+          onPageChange={(p) => fetchSkus(p)}
+        />
       </div>
+
+      <AddSkuModal
+        open={showSkuModal}
+        mode={skuMode}
+        client={selectedClient}
+        sku={editingSku}
+        onClose={() => setShowSkuModal(false)}
+        onCreated={() => fetchSkus(pagination.page)}
+        onUpdated={() => fetchSkus(pagination.page)}
+      />
     </div>
   );
 };

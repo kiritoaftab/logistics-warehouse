@@ -1,14 +1,36 @@
-// ClientsTab.jsx (UI only)
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import FilterBar from "../../components/FilterBar";
 import CusTable from "../../components/CusTable";
-import { Pencil, MoreHorizontal } from "lucide-react";
+import Pagination from "../../components/Pagination";
+import { Pencil, Plus } from "lucide-react";
+import AddSkuModal from "./modals/AddSkuModal";
+import ClientModal from "./modals/ClientModal";
+import http from "../../../api/http";
 
 const ClientsTab = () => {
   const [filtersState, setFiltersState] = useState({
     status: "All Active",
     search: "",
   });
+
+  const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState([]);
+
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    pages: 1,
+    limit: 10,
+  });
+
+  // Client modal
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [clientMode, setClientMode] = useState("create"); // create | edit
+  const [editingClient, setEditingClient] = useState(null);
+
+  // SKU modal
+  const [showSkuModal, setShowSkuModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
 
   const filters = [
     {
@@ -22,7 +44,7 @@ const ClientsTab = () => {
       key: "search",
       type: "search",
       label: "Search",
-      placeholder: "Search client name...",
+      placeholder: "Search client name / code...",
       value: filtersState.search,
       className: "w-[420px]",
     },
@@ -31,60 +53,66 @@ const ClientsTab = () => {
   const onFilterChange = (key, val) =>
     setFiltersState((p) => ({ ...p, [key]: val }));
 
-  const onReset = () => setFiltersState({ status: "All Active", search: "" });
+  const fetchClients = async (page = 1) => {
+    try {
+      setLoading(true);
+      const limit = pagination.limit || 10;
 
-  const onApply = () => {}; // UI only
+      const res = await http.get(`/clients?page=${page}&limit=${limit}`);
+      const payload = res?.data?.data;
 
-  const rows = useMemo(
-    () => [
-      {
-        id: "CL-001",
-        client_name: "Acme Corp",
-        billing_model: ["Storage", "Handling", "Pick/Pack"],
-        status: "Active",
-      },
-      {
-        id: "CL-002",
-        client_name: "Globex Inc",
-        billing_model: ["Storage (Volume)", "Handling"],
-        status: "Active",
-      },
-      {
-        id: "CL-003",
-        client_name: "Soylent Corp",
-        billing_model: ["Fixed Fee"],
-        status: "Active",
-      },
-      {
-        id: "CL-004",
-        client_name: "Umbrella Corp",
-        billing_model: ["Storage", "Handling", "Cold Chain Surcharge"],
-        status: "Inactive",
-      },
-      {
-        id: "CL-005",
-        client_name: "Cyberdyne Systems",
-        billing_model: ["Storage", "Handling"],
-        status: "Active",
-      },
-    ],
-    [],
-  );
+      setClients(payload?.clients || []);
+      setPagination(
+        payload?.pagination || { total: 0, page: 1, pages: 1, limit },
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients(1);
+  }, []);
+
+  const onReset = () => {
+    setFiltersState({ status: "All Active", search: "" });
+    fetchClients(1);
+  };
+
+  const onApply = () => fetchClients(1);
 
   const filteredRows = useMemo(() => {
     const q = (filtersState.search || "").toLowerCase().trim();
 
-    return rows.filter((r) => {
+    return (clients || []).filter((r) => {
       const matchesSearch =
-        !q || `${r.client_name} ${r.id}`.toLowerCase().includes(q);
+        !q || `${r.client_name} ${r.client_code}`.toLowerCase().includes(q);
 
+      const statusText = r.is_active ? "Active" : "Inactive";
       const matchesStatus =
         filtersState.status === "All Active" ||
-        r.status === filtersState.status;
+        statusText === filtersState.status;
 
       return matchesSearch && matchesStatus;
     });
-  }, [rows, filtersState]);
+  }, [clients, filtersState]);
+
+  const openAddClient = () => {
+    setClientMode("create");
+    setEditingClient(null);
+    setShowClientModal(true);
+  };
+
+  const openEditClient = (row) => {
+    setClientMode("edit");
+    setEditingClient(row);
+    setShowClientModal(true);
+  };
+
+  const openAddSku = (client) => {
+    setSelectedClient(client);
+    setShowSkuModal(true);
+  };
 
   const columns = useMemo(
     () => [
@@ -96,31 +124,26 @@ const ClientsTab = () => {
             <div className="text-sm font-semibold text-gray-900">
               {row.client_name}
             </div>
-            <div className="text-xs text-gray-500">ID: {row.id}</div>
+            <div className="text-xs text-gray-500">
+              Code: {row.client_code} • ID: {row.id}
+            </div>
           </div>
         ),
       },
       {
-        key: "billing_model",
-        title: "Billing Model",
+        key: "billing_type",
+        title: "Billing Type",
         render: (row) => (
-          <div className="flex flex-wrap gap-1">
-            {(row.billing_model || []).map((b) => (
-              <span
-                key={b}
-                className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-700"
-              >
-                {b}
-              </span>
-            ))}
-          </div>
+          <span className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-700">
+            {row.billing_type || "-"}
+          </span>
         ),
       },
       {
         key: "status",
         title: "Status",
         render: (row) => {
-          const isActive = row.status === "Active";
+          const isActive = !!row.is_active;
           return (
             <span
               className={[
@@ -130,7 +153,7 @@ const ClientsTab = () => {
                   : "bg-gray-100 text-gray-700",
               ].join(" ")}
             >
-              {row.status}
+              {isActive ? "Active" : "Inactive"}
             </span>
           );
         },
@@ -138,23 +161,25 @@ const ClientsTab = () => {
       {
         key: "actions",
         title: "Actions",
-        render: () => (
+        render: (row) => (
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="Edit"
-              onClick={() => {}}
+              className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
+              title="Add SKU"
+              onClick={() => openAddSku(row)}
             >
-              <Pencil className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
+              Add SKU
             </button>
+
             <button
               type="button"
               className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="More"
-              onClick={() => {}}
+              title="Edit Client"
+              onClick={() => openEditClient(row)}
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <Pencil className="h-4 w-4" />
             </button>
           </div>
         ),
@@ -168,7 +193,7 @@ const ClientsTab = () => {
       <div className="mb-4 flex items-center justify-end">
         <button
           type="button"
-          onClick={() => {}}
+          onClick={openAddClient}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
         >
           + Add Client
@@ -183,8 +208,37 @@ const ClientsTab = () => {
       />
 
       <div className="rounded-lg border border-gray-200 bg-white p-2">
-        <CusTable columns={columns} data={filteredRows} />
+        {loading ? (
+          <div className="p-6 text-sm text-gray-600">Loading clients...</div>
+        ) : (
+          <CusTable columns={columns} data={filteredRows} />
+        )}
+
+        <Pagination
+          pagination={pagination}
+          onPageChange={(p) => fetchClients(p)}
+        />
       </div>
+
+      {/* Add / Edit Client */}
+      <ClientModal
+        open={showClientModal}
+        mode={clientMode}
+        client={editingClient}
+        onClose={() => setShowClientModal(false)}
+        onSaved={() => fetchClients(pagination.page)}
+      />
+
+      {/* Add SKU */}
+      <AddSkuModal
+        open={showSkuModal}
+        client={selectedClient}
+        onClose={() => setShowSkuModal(false)}
+        onCreated={() => {
+          // optional: refresh clients list or show SKU count later
+          // fetchClients(pagination.page);
+        }}
+      />
     </div>
   );
 };
