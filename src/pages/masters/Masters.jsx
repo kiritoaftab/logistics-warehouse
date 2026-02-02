@@ -10,6 +10,8 @@ import ZonesTab from "./components/ZonesTab";
 import LocationsBinsTab from "./components/LocationsBinsTab";
 import ClientsTab from "./components/ClientsTab";
 import SlottingRulesTab from "./components/SlottingRulesTab";
+import WarehouseTab from "./components/WarehouseTab";
+import SupplierTab from "./components/SupplierTab";
 
 const TABS = [
   "Users",
@@ -21,6 +23,8 @@ const TABS = [
   "Locations & Bins",
   "Clients",
   "Slotting Rules",
+  "Warehouses",
+  "suppliers",
 ];
 
 const Masters = () => {
@@ -69,6 +73,8 @@ const Masters = () => {
       {activeTab === "Locations & Bins" && <LocationsBinsTab />}
       {activeTab === "Clients" && <ClientsTab />}
       {activeTab === "Slotting Rules" && <SlottingRulesTab />}
+      {activeTab === "Warehouses" && <WarehouseTab />}
+      {activeTab === "suppliers" && <SupplierTab />}
     </div>
   );
 };
