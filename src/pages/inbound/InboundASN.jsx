@@ -196,7 +196,7 @@ const InboundASN = () => {
         render: (row) => (
           <button
             className="text-blue-600 hover:underline"
-            onClick={() => console.log("open ASN", row.id)}
+            onClick={() => navigate(`/ASNdetails/${row.id}`)}
           >
             {row.asnNo}
           </button>
@@ -226,7 +226,13 @@ const InboundASN = () => {
           <div className="flex items-center gap-3">
             <button
               className="text-blue-600 hover:underline"
-              onClick={() => console.log("action", row.id)}
+              onClick={() =>
+                navigate(
+                  row.status === "Draft"
+                    ? `/createASN/${row.id}`
+                    : `/ASNdetails/${row.id}`,
+                )
+              }
             >
               {row.status === "In Receiving"
                 ? "Resume"
