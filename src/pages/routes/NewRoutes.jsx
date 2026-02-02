@@ -31,40 +31,112 @@ import OutboundSLA from "../reports/OutboundSLA";
 import BillingRevenue from "../reports/BillingRevenue";
 import Billing from "../billing/Billing";
 import Setting from "../onboarding/Setting";
+import { RequirePermission, RequireAuth } from "../utils/auth/RequireAuth";
+import { ROUTE_PERMS } from "./routePerms";
+import Unauthorized from "../unauthorized/Unauthorized";
+
+const protect = (path, element) => {
+  const rule = ROUTE_PERMS[path];
+  if (!rule) {
+    console.warn("[ROUTE_PERMS MISSING]", path);
+    return <RequireAuth>{element}</RequireAuth>;
+  }
+
+  return (
+    <RequireAuth>
+      <RequirePermission moduleCode={rule.module} permCode={rule.perm}>
+        {element}
+      </RequirePermission>
+    </RequireAuth>
+  );
+};
 
 const NewRoutes = [
+  {
+    path: "/unauthorized",
+    element: (
+      <RequireAuth>
+        <Unauthorized />
+      </RequireAuth>
+    ),
+  },
+
   { path: "/", element: <Navigate to="/inventory" replace /> },
-  { path: "/dashboard", element: <Dashboard /> },
-  { path: "/putaway", element: <Putaway /> },
-  { path: "/putawaydetails", element: <PutawayDetails /> },
-  { path: "/inbound", element: <InboundASN /> },
-  { path: "/createASN", element: <CreateASN /> },
-  { path: "/ASNdetails/:id", element: <AsnDetail /> },
-  { path: "/ASNreceive/:id", element: <AsnReceiving /> },
-  { path: "/outbound", element: <OutboundOrders /> },
-  { path: "/orderDetails/:id", element: <OrderDetail /> },
-  { path: "/saleOrderCreate", element: <CreateSalesOrder /> },
-  { path: "/masters", element: <Masters /> },
-  { path: "/reports", element: <Reports /> },
-  { path: "/inboundTAT", element: <InboundTAT /> },
-  { path: "/putawayAging", element: <PutawayAging /> },
-  { path: "/inventoryAccuracy", element: <InventoryAccuracy /> },
-  { path: "/spaceUtilization", element: <SpaceUtilization /> },
-  { path: "/pickProductivity", element: <PickProductivity /> },
-  { path: "/packProductivity", element: <PackProductivity /> },
-  { path: "/outboundSLA", element: <OutboundSLA /> },
-  { path: "/billingRevenue", element: <BillingRevenue /> },
+
+  { path: "/dashboard", element: protect("/dashboard", <Dashboard />) },
+  { path: "/putaway", element: protect("/putaway", <Putaway />) },
+  {
+    path: "/putawaydetails",
+    element: protect("/putawaydetails", <PutawayDetails />),
+  },
+
+  { path: "/inbound", element: protect("/inbound", <InboundASN />) },
+  { path: "/createASN/:id", element: protect("/createASN/:id", <CreateASN />) },
+  {
+    path: "/ASNdetails/:id",
+    element: protect("/ASNdetails/:id", <AsnDetail />),
+  },
+  {
+    path: "/ASNreceive/:id",
+    element: protect("/ASNreceive/:id", <AsnReceiving />),
+  },
+
+  { path: "/outbound", element: protect("/outbound", <OutboundOrders />) },
+  {
+    path: "/orderDetails/:id",
+    element: protect("/orderDetails/:id", <OrderDetail />),
+  },
+  {
+    path: "/saleOrderCreate/:id",
+    element: protect("/saleOrderCreate/:id", <CreateSalesOrder />),
+  },
+
+  { path: "/masters", element: protect("/masters", <Masters />) },
+
+  { path: "/reports", element: protect("/reports", <Reports />) },
+  { path: "/inboundTAT", element: protect("/inboundTAT", <InboundTAT />) },
+  {
+    path: "/putawayAging",
+    element: protect("/putawayAging", <PutawayAging />),
+  },
+  {
+    path: "/inventoryAccuracy",
+    element: protect("/inventoryAccuracy", <InventoryAccuracy />),
+  },
+  {
+    path: "/spaceUtilization",
+    element: protect("/spaceUtilization", <SpaceUtilization />),
+  },
+  {
+    path: "/pickProductivity",
+    element: protect("/pickProductivity", <PickProductivity />),
+  },
+  {
+    path: "/packProductivity",
+    element: protect("/packProductivity", <PackProductivity />),
+  },
+  { path: "/outboundSLA", element: protect("/outboundSLA", <OutboundSLA />) },
+  {
+    path: "/billingRevenue",
+    element: protect("/billingRevenue", <BillingRevenue />),
+  },
 
   {
     path: "/inventory",
-    element: <Inventory />,
+    element: protect("/inventory", <Inventory />),
     children: [{ index: true, element: <InventoryStockBySKU /> }],
   },
-  { path: "/picking", element: <Picking /> },
-  { path: "/packing", element: <Packing /> },
-  { path: "/shipping", element: <Shipping /> },
-  { path: "/shippingdetails", element: <ShipmentDetail /> },
-  { path: "/billing", element: <Billing /> },
-  { path: "/setting", element: <Setting /> },
+
+  { path: "/picking", element: protect("/picking", <Picking />) },
+  { path: "/packing", element: protect("/packing", <Packing />) },
+  { path: "/shipping", element: protect("/shipping", <Shipping />) },
+  {
+    path: "/shippingdetails",
+    element: protect("/shippingdetails", <ShipmentDetail />),
+  },
+
+  { path: "/billing", element: protect("/billing", <Billing />) },
+  { path: "/setting", element: protect("/setting", <Setting />) },
 ];
+
 export default NewRoutes;

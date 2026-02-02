@@ -224,15 +224,18 @@ const InboundASN = () => {
         title: "Actions",
         render: (row) => (
           <div className="flex items-center gap-3">
+            {/* in need to pass the complete asn detail as state in navigate */}
             <button
               className="text-blue-600 hover:underline"
-              onClick={() =>
-                navigate(
-                  row.status === "Draft"
-                    ? `/createASN/${row.id}`
-                    : `/ASNdetails/${row.id}`,
-                )
-              }
+              onClick={() => {
+                if (row.status === "Draft") {
+                  navigate(`/createASN/${row.id}`, {
+                    state: { asn: row },
+                  });
+                } else {
+                  toast.info("Feature coming soon!");
+                }
+              }}
             >
               {row.status === "In Receiving"
                 ? "Resume"
@@ -272,7 +275,7 @@ const InboundASN = () => {
               Receive GRN
             </button>
             <button
-              onClick={() => navigate("/createASN")}
+              onClick={() => navigate("/createASN/new")}
               className="px-4 py-2 rounded-md text-sm bg-primary text-white w-full sm:w-auto"
             >
               + Create ASN
