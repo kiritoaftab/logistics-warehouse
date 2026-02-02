@@ -11,6 +11,7 @@ function App() {
       <div>
         <Toaster position="top-right" />
       </div>
+
       <Router>
         <Routes>
           {/* Public Routes */}

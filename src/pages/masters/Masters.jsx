@@ -12,6 +12,8 @@ import ClientsTab from "./components/ClientsTab";
 import SlottingRulesTab from "./components/SlottingRulesTab";
 import WarehouseTab from "./components/WarehouseTab";
 import SupplierTab from "./components/SupplierTab";
+import PalletTab from "./components/PalletTab";
+import DockTab from "./components/DockTab";
 
 const TABS = [
   "Users",
@@ -19,12 +21,13 @@ const TABS = [
   "Permissions",
   "Roles",
   "SKUs",
-  "Zones",
   "Locations & Bins",
   "Clients",
   "Slotting Rules",
   "Warehouses",
-  "suppliers",
+  "Suppliers",
+  "Pallets",
+  "Docks",
 ];
 
 const Masters = () => {
@@ -69,12 +72,13 @@ const Masters = () => {
       {activeTab === "Permissions" && <PermissionsTab />}{" "}
       {activeTab === "Roles" && <RolesTab />}{" "}
       {activeTab === "SKUs" && <SKUsTab />}
-      {activeTab === "Zones" && <ZonesTab />}
       {activeTab === "Locations & Bins" && <LocationsBinsTab />}
       {activeTab === "Clients" && <ClientsTab />}
       {activeTab === "Slotting Rules" && <SlottingRulesTab />}
       {activeTab === "Warehouses" && <WarehouseTab />}
-      {activeTab === "suppliers" && <SupplierTab />}
+      {activeTab === "Suppliers" && <SupplierTab />}
+      {activeTab === "Pallets" && <PalletTab />}
+      {activeTab === "Pallets" && <DockTab />}
     </div>
   );
 };
