@@ -55,7 +55,7 @@ const ShipmentJourney = ({ steps = [] }) => {
                   {s.label}
                 </div>
                 <div className="mt-1 text-xs text-gray-500 whitespace-nowrap">
-                  {s.time || "-"}
+                  {s.time || "Pending"}
                 </div>
               </div>
             ))}
@@ -63,31 +63,64 @@ const ShipmentJourney = ({ steps = [] }) => {
         </div>
       </div>
 
-      <div className="lg:hidden space-y-4">
-        {steps.map((s, idx) => (
-          <div key={idx} className="relative flex items-start gap-3">
-            {idx < steps.length - 1 && (
-              <div className="absolute left-[18px] top-9 bottom-0 w-[2px] bg-gray-200">
+      {/* Mobile (alternate left/right around centered line) */}
+      <div className="lg:hidden relative">
+        {/* Center vertical line */}
+        <div className="absolute left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 bg-gray-200" />
+
+        <div className="space-y-6">
+          {steps.map((s, idx) => {
+            const isLeft = idx % 2 === 0;
+
+            return (
+              <div key={idx} className="relative">
+                {/* Progress segment (optional): fill line for done steps */}
                 {s.state === "done" && (
-                  <div className="absolute inset-0 bg-blue-600" />
+                  <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-blue-600" />
                 )}
-              </div>
-            )}
 
-            <div className="relative z-10">
-              <StepDot state={s.state} />
-            </div>
+                <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
+                  {/* Left content */}
+                  <div
+                    className={`pr-2 ${isLeft ? "text-right" : "opacity-0"}`}
+                  >
+                    {isLeft && (
+                      <>
+                        <div className="text-sm font-semibold text-gray-900">
+                          {s.label}
+                        </div>
+                        <div className="mt-0.5 text-xs text-gray-500">
+                          {s.time || "Pending"}
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-            <div className="flex-1 pt-1.5 min-w-0">
-              <div className="text-sm font-semibold text-gray-900">
-                {s.label}
+                  {/* Center dot */}
+                  <div className="relative z-10 flex justify-center">
+                    <StepDot state={s.state} />
+                  </div>
+
+                  {/* Right content */}
+                  <div
+                    className={`pl-2 ${!isLeft ? "text-left" : "opacity-0"}`}
+                  >
+                    {!isLeft && (
+                      <>
+                        <div className="text-sm font-semibold text-gray-900">
+                          {s.label}
+                        </div>
+                        <div className="mt-0.5 text-xs text-gray-500">
+                          {s.time || "Pending"}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="mt-0.5 text-xs text-gray-500">
-                {s.time || "Pending"}
-              </div>
-            </div>
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
