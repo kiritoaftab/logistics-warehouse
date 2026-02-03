@@ -5,7 +5,14 @@ const PATH_ALIASES = {};
 
 const GROUP_PATHS = {
   "/masters": ["USER_MANAGEMENT", "WAREHOUSE", "SUPPLIERS", "PALLET", "GRN"],
-  "/reports": ["REPORTS", "INBOUND", "PUTAWAY", "INVENTORY", "ORDERS"],
+  "/reports": [
+    "REPORTS",
+    "INBOUND",
+    "PUTAWAY",
+    "INVENTORY",
+    "ORDERS",
+    "BILLING",
+  ],
 };
 
 export const canSeeMenuPath = (perms, path) => {
