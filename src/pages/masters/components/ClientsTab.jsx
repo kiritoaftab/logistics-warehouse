@@ -234,10 +234,7 @@ const ClientsTab = () => {
         open={showSkuModal}
         client={selectedClient}
         onClose={() => setShowSkuModal(false)}
-        onCreated={() => {
-          // optional: refresh clients list or show SKU count later
-          // fetchClients(pagination.page);
-        }}
+        onCreated={() => {}}
       />
     </div>
   );

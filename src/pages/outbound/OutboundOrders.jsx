@@ -5,9 +5,11 @@ import StatCard from "../components/StatCard";
 import FilterBar from "../components/FilterBar";
 import CusTable from "../components/CusTable";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../components/toast/ToastProvider";
 
 const OutboundOrders = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [selectedRows, setSelectedRows] = useState([]);
   const [filterState, setFilterState] = useState({
     dateRange: "Today",
@@ -188,7 +190,10 @@ const OutboundOrders = () => {
         title: "Order No",
         render: (row) => (
           <div>
-            <button className="text-blue-600 hover:underline font-medium">
+            <button
+              className="text-blue-600 hover:underline font-medium"
+              onClick={() => navigate(`/orderDetails/${row.id}`)}
+            >
               {row.orderNo}
             </button>
             <div className="text-xs text-gray-400">Ref: {row.ref}</div>
@@ -270,7 +275,10 @@ const OutboundOrders = () => {
         title: "Actions",
         render: (row) => (
           <div className="flex items-center justify-end gap-2">
-            <button className="px-3 py-1.5 text-xs rounded-md border bg-white">
+            <button
+              onClick={() => toast.info("feature coming soon!")}
+              className="px-3 py-1.5 text-xs rounded-md border bg-white"
+            >
               {row.actionLabel}
             </button>
             <button
@@ -300,7 +308,7 @@ const OutboundOrders = () => {
               Bulk Allocate
             </button>
             <button
-              onClick={() => navigate("/saleOrderCreate")}
+              onClick={() => navigate("/saleOrderCreate/new")}
               className="px-4 py-2 rounded-md text-sm bg-blue-600 text-white"
             >
               + Create Sales Order

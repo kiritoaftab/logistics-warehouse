@@ -7,6 +7,8 @@ import { Field, Modal } from "./helper";
 import ConfirmDeleteModal from "../../components/modals/ConfirmDeleteModal";
 import { useToast } from "../../components/toast/ToastProvider";
 import Pagination from "../../components/Pagination";
+import { useAccess } from "../../utils/useAccess";
+import { getUserRole } from "../../utils/authStorage";
 
 const emptyUser = {
   username: "",
@@ -60,6 +62,14 @@ const UsersTab = () => {
     total: 0,
     limit: 5,
   });
+
+  const roleCode = getUserRole();
+  const isAdmin = roleCode === "ADMIN";
+  const access = useAccess("USER_MANAGEMENT");
+  const canCreateUser = isAdmin || access.canCreate;
+  const canUpdateUser = isAdmin || access.canUpdate;
+  const canDeleteUser = isAdmin || access.canDelete;
+  const showActionsColumn = canUpdateUser || canDeleteUser;
 
   const handlePageChange = (newPage) => {
     fetchUsers(newPage);
@@ -291,41 +301,50 @@ const UsersTab = () => {
           );
         },
       },
-      {
-        key: "actions",
-        title: "Actions",
-        render: (row) => (
-          <div className="flex items-center gap-2">
-            <button
-              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
-              onClick={() => openEdit(row)}
-            >
-              Edit
-            </button>
+      // delete update both access not allowed then hide actions column
+      ...(showActionsColumn
+        ? [
+            {
+              key: "actions",
+              title: "Actions",
 
-            <button
-              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
-              onClick={() => openChangePassword(row)}
-            >
-              Password
-            </button>
-
-            <button
-              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
-              onClick={() => openRolesModal(row)}
-            >
-              Roles
-            </button>
-
-            <button
-              className="rounded-md bg-red-600 px-3 py-1.5 text-xs text-white"
-              onClick={() => deleteUser(row)}
-            >
-              Delete
-            </button>
-          </div>
-        ),
-      },
+              render: (row) => (
+                <div className="flex items-center gap-2">
+                  {canUpdateUser && (
+                    <>
+                      <button
+                        className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
+                        onClick={() => openEdit(row)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
+                        onClick={() => openChangePassword(row)}
+                      >
+                        Password
+                      </button>
+                      <button
+                        className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
+                        onClick={() => openRolesModal(row)}
+                      >
+                        Roles
+                      </button>
+                    </>
+                  )}
+                  {canDeleteUser && (
+                    <button
+                      className="rounded-md bg-red-600 px-3 py-1.5 text-xs text-white"
+                      onClick={() => deleteUser(row)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
     [],
   );
@@ -448,12 +467,14 @@ const UsersTab = () => {
   return (
     <div>
       <div className="mb-4 flex items-center justify-end">
-        <button
-          onClick={openCreate}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
-        >
-          + Add User
-        </button>
+        {canCreateUser && (
+          <button
+            onClick={openCreate}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+          >
+            + Add User
+          </button>
+        )}
       </div>
 
       <FilterBar

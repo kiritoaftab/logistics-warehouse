@@ -14,8 +14,14 @@ import AsnLines from "../components/forms/AsnLines";
 import AttachmentsDropzone from "../components/forms/AttachmentsDropzone";
 import ConfirmDeleteModal from "../components/modals/ConfirmDeleteModal";
 import { useToast } from "../components/toast/ToastProvider";
+import { useLocation, useParams } from "react-router-dom";
 
 const CreateASN = () => {
+  // from the navigate im getting state and from param im getting id
+  const params = useParams();
+  const location = useLocation();
+  const asn = location.state;
+  console.log(params, asn);
   const [form, setForm] = useState({
     warehouse: "WH-NYC-01 (New York)",
     client: "Acme Corp",

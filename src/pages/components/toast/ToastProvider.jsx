@@ -35,7 +35,7 @@ export const ToastProvider = ({ children }) => {
       const id = `${Date.now()}-${Math.random()}`;
       const duration = opts.duration ?? 3000;
 
-      setToasts((prev) => [...prev, { id, type, message }]);
+      setToasts((prev) => [...prev, { id, type, message, duration }]);
 
       window.setTimeout(() => remove(id), duration);
     },
@@ -69,11 +69,29 @@ export const ToastProvider = ({ children }) => {
             <div
               className={`
                 ${backgrounds[t.type] || backgrounds.info}
-                border shadow-lg rounded-xl p-4 flex items-start gap-3
+                relative border shadow-lg rounded-xl p-4 flex items-start gap-3
                 backdrop-blur-sm
                 transition-all duration-200 hover:shadow-xl hover:scale-[1.02]
               `}
             >
+              {/* Loading / time progress bar */}
+              <div className="absolute left-0 top-0 h-[3px] w-full overflow-hidden rounded-t-xl">
+                <div
+                  className={`h-full ${
+                    t.type === "success"
+                      ? "bg-green-500"
+                      : t.type === "error"
+                        ? "bg-red-500"
+                        : t.type === "warning"
+                          ? "bg-amber-500"
+                          : "bg-blue-500"
+                  }`}
+                  style={{
+                    animation: `toastProgress ${t.duration}ms linear forwards`,
+                  }}
+                />
+              </div>
+
               <div className="mt-0.5">{icons[t.type] || icons.info}</div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-900 leading-relaxed">
@@ -113,6 +131,15 @@ export const ToastProvider = ({ children }) => {
             opacity: 1;
           }
         }
+        @keyframes toastProgress {
+          from {
+            transform: translateX(-100%);
+          }
+          to {
+            transform: translateX(0%);
+          }
+        }
+
       `}</style>
     </ToastContext.Provider>
   );

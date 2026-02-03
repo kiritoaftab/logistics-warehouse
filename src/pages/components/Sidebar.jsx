@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Download,
@@ -18,6 +18,8 @@ import {
   Settings,
 } from "lucide-react";
 import Header from "./Header";
+import { useAuth } from "../utils/AuthProvider";
+import { canSeeMenuPath } from "../utils/sidebarAccess";
 
 const menuItems = [
   { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -37,7 +39,13 @@ const menuItems = [
 
 const Sidebar = () => {
   const [open, setOpen] = useState(false);
+  const { perms, loadingPerms } = useAuth();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
+  const visibleMenuItems = loadingPerms
+    ? []
+    : menuItems.filter((item) => canSeeMenuPath(perms, item.path));
   return (
     <div className="flex h-screen bg-[#F6F8FA] overflow-hidden">
       {" "}
@@ -57,10 +65,7 @@ const Sidebar = () => {
       )}
       {/* Sidebar */}
       <aside
-        className={`fixed sm:sticky sm:top-0 top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 z-40
-  transform transition-transform duration-300
-  ${open ? "translate-x-0" : "-translate-x-full"}
-  sm:translate-x-0`}
+        className={`fixed sm:sticky sm:top-0 top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 z-40 transform transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"} sm:translate-x-0`}
       >
         {/* Wrapper */}
         <div className="flex h-full flex-col">
@@ -70,21 +75,14 @@ const Sidebar = () => {
               ORBIT <span className="text-primary">WMS</span>
             </h1>
           </div>
-
-          {/* Menu (scrollable) */}
           <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-            {menuItems.map(({ name, icon: Icon, path }) => (
+            {visibleMenuItems.map(({ name, icon: Icon, path }) => (
               <NavLink
                 key={name}
                 to={path}
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition
-            ${
-              isActive
-                ? "bg-primary text-white"
-                : "text-gray-600 hover:bg-gray-100"
-            }`
+                  `flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition ${isActive ? "bg-primary text-white" : "text-gray-600 hover:bg-gray-100"}`
                 }
               >
                 <Icon className="w-5 h-5" />
@@ -100,7 +98,8 @@ const Sidebar = () => {
               onClick={() => {
                 sessionStorage.clear();
                 localStorage.clear();
-                window.location.href = "/";
+                logout();
+                navigate("/login", { replace: true });
               }}
               className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50"
             >
