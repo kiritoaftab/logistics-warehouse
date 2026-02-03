@@ -1,12 +1,7 @@
 import { AUTH_ONLY, ROUTE_PERMS } from "../routes/routePerms";
 import { hasPermission } from "./permissions";
 
-const PATH_ALIASES = {
-  "/picking": "/outbound",
-  "/packing": "/outbound",
-  "/shipping": "/outbound",
-  "/billing": "/reports",
-};
+const PATH_ALIASES = {};
 
 const GROUP_PATHS = {
   "/masters": ["USER_MANAGEMENT", "WAREHOUSE", "SUPPLIERS", "PALLET", "GRN"],
