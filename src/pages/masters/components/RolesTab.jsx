@@ -5,6 +5,8 @@ import ConfirmDeleteModal from "../../components/modals/ConfirmDeleteModal";
 import http from "../../../api/http";
 import { Field, Modal } from "./helper";
 import { toast } from "react-hot-toast";
+import { getUserRole } from "../../utils/authStorage";
+import { useAccess } from "../../utils/useAccess";
 
 const emptyRole = {
   role_name: "",
@@ -20,38 +22,26 @@ const RolesTab = () => {
   });
 
   const [loading, setLoading] = useState(false);
-
-  // roles list
   const [roles, setRoles] = useState([]);
-
-  // modules + permissions (for matrix)
   const [modules, setModules] = useState([]);
   const [permissions, setPermissions] = useState([]);
-
-  // selection for matrix
   const [selectedRole, setSelectedRole] = useState(null);
-
-  /**
-   * grantedMap structure:
-   * {
-   *   [moduleId]: { [permissionId]: true/false }
-   * }
-   *
-   * NOTE: We don't have GET existing grants API shared yet,
-   * so this map starts empty and updates optimistically when user toggles.
-   */
   const [grantedMap, setGrantedMap] = useState({});
-
-  // create/edit role
   const [showForm, setShowForm] = useState(false);
   const [mode, setMode] = useState("create"); // create | edit
   const [activeRole, setActiveRole] = useState(null);
   const [form, setForm] = useState(emptyRole);
   const [formErrors, setFormErrors] = useState({});
-
-  // delete role
   const [showDelete, setShowDelete] = useState(false);
   const [deleteObj, setDeleteObj] = useState(null);
+
+  const roleCode = getUserRole();
+  const isAdmin = roleCode === "ADMIN";
+  const access = useAccess("ROLES");
+  const canCreate = isAdmin || access.canCreate;
+  const canUpdate = isAdmin || access.canUpdate;
+  const canDelete = isAdmin || access.canDelete;
+  const showActionsColumn = canUpdate || canDelete;
 
   const filters = [
     {
@@ -295,38 +285,47 @@ const RolesTab = () => {
           );
         },
       },
-      {
-        key: "actions",
-        title: "Actions",
-        render: (row) => (
-          <div className="flex items-center gap-2">
-            <button
-              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
-              onClick={() => openEdit(row)}
-            >
-              Edit
-            </button>
+      ...(showActionsColumn
+        ? [
+            {
+              key: "actions",
+              title: "Actions",
+              render: (row) => (
+                <div className="flex items-center gap-2">
+                  {canUpdate && (
+                    <>
+                      <button
+                        className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
+                        onClick={() => openEdit(row)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
+                        onClick={async () => {
+                          setSelectedRole(row);
+                          await fetchRoleDetails(row.id);
+                          // toast.success(`Selected role: ${row.role_name}`);
+                        }}
+                      >
+                        Manage Access
+                      </button>
+                    </>
+                  )}
 
-            <button
-              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
-              onClick={async () => {
-                setSelectedRole(row);
-                await fetchRoleDetails(row.id);
-                // toast.success(`Selected role: ${row.role_name}`);
-              }}
-            >
-              Manage Access
-            </button>
-
-            <button
-              className="rounded-md bg-red-600 px-3 py-1.5 text-xs text-white"
-              onClick={() => askDelete(row)}
-            >
-              Delete
-            </button>
-          </div>
-        ),
-      },
+                  {canDelete && (
+                    <button
+                      className="rounded-md bg-red-600 px-3 py-1.5 text-xs text-white"
+                      onClick={() => askDelete(row)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
     [selectedRole],
   );
@@ -388,12 +387,14 @@ const RolesTab = () => {
     >
       <div>
         <div className="mb-4 flex items-center justify-end">
-          <button
-            onClick={openCreate}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
-          >
-            + Add Role
-          </button>
+          {canCreate && (
+            <button
+              onClick={openCreate}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+            >
+              + Add Role
+            </button>
+          )}
         </div>
 
         <FilterBar

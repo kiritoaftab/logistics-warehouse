@@ -5,6 +5,8 @@ import ConfirmDeleteModal from "../../components/modals/ConfirmDeleteModal";
 import http from "../../../api/http";
 import { Field, Modal } from "./helper";
 import { toast } from "react-hot-toast";
+import { useAccess } from "../../utils/useAccess";
+import { getUserRole } from "../../utils/authStorage";
 
 const emptyModule = {
   name: "",
@@ -34,6 +36,14 @@ const ModulesTab = () => {
   // delete
   const [showDelete, setShowDelete] = useState(false);
   const [deleteObj, setDeleteObj] = useState(null);
+
+  const roleCode = getUserRole();
+  const isAdmin = roleCode === "ADMIN";
+  const access = useAccess("MODULES");
+  const canCreate = isAdmin || access.canCreate;
+  const canUpdate = isAdmin || access.canUpdate;
+  const canDelete = isAdmin || access.canDelete;
+  const showActionsColumn = canUpdate || canDelete;
 
   const filters = [
     {
@@ -255,26 +265,34 @@ const ModulesTab = () => {
           );
         },
       },
-      {
-        key: "actions",
-        title: "Actions",
-        render: (row) => (
-          <div className="flex items-center gap-2">
-            <button
-              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
-              onClick={() => openEdit(row)}
-            >
-              Edit
-            </button>
-            <button
-              className="rounded-md bg-red-600 px-3 py-1.5 text-xs text-white"
-              onClick={() => askDelete(row)}
-            >
-              Delete
-            </button>
-          </div>
-        ),
-      },
+      ...(showActionsColumn
+        ? [
+            {
+              key: "actions",
+              title: "Actions",
+              render: (row) => (
+                <div className="flex items-center gap-2">
+                  {canUpdate && (
+                    <button
+                      className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700"
+                      onClick={() => openEdit(row)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      className="rounded-md bg-red-600 px-3 py-1.5 text-xs text-white"
+                      onClick={() => askDelete(row)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
     [],
   );
@@ -282,12 +300,14 @@ const ModulesTab = () => {
   return (
     <div>
       <div className="mb-4 flex items-center justify-end">
-        <button
-          onClick={openCreate}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
-        >
-          + Add Module
-        </button>
+        {canCreate && (
+          <button
+            onClick={openCreate}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+          >
+            + Add Module
+          </button>
+        )}
       </div>
 
       <FilterBar

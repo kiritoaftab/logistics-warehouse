@@ -9,29 +9,30 @@ import ModulesTab from "./components/ModulesTab";
 import PermissionsTab from "./components/PermissionsTab";
 import RolesTab from "./components/RolesTab";
 import SKUsTab from "./components/SKUsTab";
-import ZonesTab from "./components/ZonesTab";
 import LocationsBinsTab from "./components/LocationsBinsTab";
 import ClientsTab from "./components/ClientsTab";
 import SlottingRulesTab from "./components/SlottingRulesTab";
 import WarehouseTab from "./components/WarehouseTab";
 import SupplierTab from "./components/SupplierTab";
-import PalletTab from "./components/PalletTab";
 import DockTab from "./components/DockTab";
 import { getUserRole } from "../utils/authStorage";
 
 const TAB_CONFIG = [
   { key: "Users", module: "USER_MANAGEMENT", Component: UsersTab },
-  { key: "Modules", module: "", Component: ModulesTab },
-  { key: "Permissions", module: "", Component: PermissionsTab },
-  { key: "Roles", module: "", Component: RolesTab },
-  { key: "SKUs", module: "INVENTORY", Component: SKUsTab },
-  { key: "Locations & Bins", module: "", Component: LocationsBinsTab },
-  { key: "Clients", module: "", Component: ClientsTab },
-  { key: "Slotting Rules", module: "", Component: SlottingRulesTab },
+  { key: "Modules", module: "MODULES", Component: ModulesTab },
+  { key: "Permissions", module: "PERMISSIONS", Component: PermissionsTab },
+  { key: "Roles", module: "ROLES", Component: RolesTab },
+  { key: "SKUs", module: "SKUS", Component: SKUsTab },
+  { key: "Locations & Bins", module: "LOCATIONS", Component: LocationsBinsTab },
+  { key: "Clients", module: "CLIENTS", Component: ClientsTab },
+  {
+    key: "Slotting Rules",
+    module: "SLOTTINGRULES",
+    Component: SlottingRulesTab,
+  },
   { key: "Warehouses", module: "WAREHOUSE", Component: WarehouseTab },
   { key: "Suppliers", module: "SUPPLIERS", Component: SupplierTab },
-    { key: "Docks", module: "Docks", Component: DockTab },
-
+  { key: "Docks", module: "DOCKS", Component: DockTab },
 ];
 
 const Masters = () => {

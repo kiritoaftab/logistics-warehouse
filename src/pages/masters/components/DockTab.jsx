@@ -4,6 +4,8 @@ import CusTable from "../../components/CusTable";
 import { Pencil, Trash2, RefreshCw, Anchor, Eye, Plus } from "lucide-react";
 import http from "../../../api/http";
 import toast from "react-hot-toast";
+import { getUserRole } from "../../utils/authStorage";
+import { useAccess } from "../../utils/useAccess";
 
 const DockTab = () => {
   const [docks, setDocks] = useState([]);
@@ -23,6 +25,14 @@ const DockTab = () => {
     status: "All Status",
     warehouse_id: "All Warehouses",
   });
+
+  const roleCode = getUserRole();
+  const isAdmin = roleCode === "ADMIN";
+  const access = useAccess("LOCATIONS");
+  const canCreate = isAdmin || access.canCreate;
+  const canUpdate = isAdmin || access.canUpdate;
+  const canDelete = isAdmin || access.canDelete;
+  const showActionsColumn = canUpdate || canDelete;
 
   // Fetch warehouses
   const fetchWarehouses = useCallback(async () => {
@@ -78,7 +88,9 @@ const DockTab = () => {
   // Warehouse options for filter
   const warehouseOptions = useMemo(() => {
     const baseOptions = ["All Warehouses"];
-    const warehouseList = warehouses.map((wh) => `${wh.warehouse_name} (${wh.warehouse_code})`);
+    const warehouseList = warehouses.map(
+      (wh) => `${wh.warehouse_name} (${wh.warehouse_code})`,
+    );
     return [...baseOptions, ...warehouseList];
   }, [warehouses]);
 
@@ -96,9 +108,12 @@ const DockTab = () => {
 
   // Get display name from warehouse ID
   const getWarehouseDisplayName = (warehouseId) => {
-    if (warehouseId === "All Warehouses" || !warehouseId) return "All Warehouses";
+    if (warehouseId === "All Warehouses" || !warehouseId)
+      return "All Warehouses";
     const warehouse = warehouses.find((wh) => wh.id === parseInt(warehouseId));
-    return warehouse ? `${warehouse.warehouse_name} (${warehouse.warehouse_code})` : "All Warehouses";
+    return warehouse
+      ? `${warehouse.warehouse_name} (${warehouse.warehouse_code})`
+      : "All Warehouses";
   };
 
   const filters = [
@@ -137,7 +152,10 @@ const DockTab = () => {
   const onFilterChange = (key, val) => {
     if (key === "warehouse_id") {
       // Convert display name back to ID
-      const warehouseId = val === "All Warehouses" ? "All Warehouses" : getWarehouseIdFromName(val);
+      const warehouseId =
+        val === "All Warehouses"
+          ? "All Warehouses"
+          : getWarehouseIdFromName(val);
       setFiltersState((p) => ({ ...p, [key]: warehouseId }));
     } else {
       setFiltersState((p) => ({ ...p, [key]: val }));
@@ -241,12 +259,7 @@ const DockTab = () => {
         filtersState.warehouse_id === "All Warehouses" ||
         dock.warehouse_id?.toString() === filtersState.warehouse_id?.toString();
 
-      return (
-        matchesSearch &&
-        matchesType &&
-        matchesStatus &&
-        matchesWarehouse
-      );
+      return matchesSearch && matchesType && matchesStatus && matchesWarehouse;
     });
   }, [docks, filtersState]);
 
@@ -260,9 +273,7 @@ const DockTab = () => {
   };
 
   const getStatusColor = (isActive) => {
-    return isActive
-      ? "bg-green-100 text-green-700"
-      : "bg-red-100 text-red-700";
+    return isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700";
   };
 
   const columns = useMemo(
@@ -347,42 +358,54 @@ const DockTab = () => {
           </div>
         ),
       },
-      {
-        key: "actions",
-        title: "Actions",
-        render: (row) => (
-          <div className="flex items-center justify-start gap-1">
-            <button
-              type="button"
-              className="rounded-md p-2 text-blue-600 hover:bg-blue-50"
-              title="View Details"
-              onClick={() => handleViewDock(row)}
-            >
-              <Eye className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="Edit"
-              onClick={() => handleEditDock(row)}
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className={`rounded-md p-2 hover:bg-gray-100 ${deleteConfirm?.id === row.id ? "text-white bg-red-600" : "text-red-600"}`}
-              title={deleteConfirm?.id === row.id ? "Confirm Delete" : "Delete"}
-              onClick={() => handleDeleteDock(row)}
-            >
-              {deleteConfirm?.id === row.id ? (
-                <span className="text-xs font-medium">Confirm</span>
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        ),
-      },
+      ...(showActionsColumn
+        ? [
+            {
+              key: "actions",
+              title: "Actions",
+              render: (row) => (
+                <div className="flex items-center justify-start gap-1">
+                  <button
+                    type="button"
+                    className="rounded-md p-2 text-blue-600 hover:bg-blue-50"
+                    title="View Details"
+                    onClick={() => handleViewDock(row)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+                      title="Edit"
+                      onClick={() => handleEditDock(row)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      type="button"
+                      className={`rounded-md p-2 hover:bg-gray-100 ${deleteConfirm?.id === row.id ? "text-white bg-red-600" : "text-red-600"}`}
+                      title={
+                        deleteConfirm?.id === row.id
+                          ? "Confirm Delete"
+                          : "Delete"
+                      }
+                      onClick={() => handleDeleteDock(row)}
+                    >
+                      {deleteConfirm?.id === row.id ? (
+                        <span className="text-xs font-medium">Confirm</span>
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
     [deleteConfirm],
   );
@@ -630,7 +653,10 @@ const DockTab = () => {
                   <button
                     type="button"
                     onClick={() =>
-                      setFormData((prev) => ({ ...prev, dock_type: "OUTBOUND" }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        dock_type: "OUTBOUND",
+                      }))
                     }
                     className="rounded-md bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200"
                   >
@@ -639,7 +665,10 @@ const DockTab = () => {
                   <button
                     type="button"
                     onClick={() =>
-                      setFormData((prev) => ({ ...prev, is_active: !prev.is_active }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        is_active: !prev.is_active,
+                      }))
                     }
                     className="rounded-md bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
                   >
@@ -706,9 +735,9 @@ const DockTab = () => {
   }
 
   // Statistics
-  const activeDocks = docks.filter(d => d.is_active).length;
-  const inboundDocks = docks.filter(d => d.dock_type === "INBOUND").length;
-  const outboundDocks = docks.filter(d => d.dock_type === "OUTBOUND").length;
+  const activeDocks = docks.filter((d) => d.is_active).length;
+  const inboundDocks = docks.filter((d) => d.dock_type === "INBOUND").length;
+  const outboundDocks = docks.filter((d) => d.dock_type === "OUTBOUND").length;
 
   return (
     <div>
@@ -722,18 +751,17 @@ const DockTab = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          
-
           <div className="flex items-center gap-2">
-            
-            <button
-              type="button"
-              onClick={handleAddDock}
-              className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4" />
-              Add Dock
-            </button>
+            {canCreate && (
+              <button
+                type="button"
+                onClick={handleAddDock}
+                className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+              >
+                <Plus className="h-4 w-4" />
+                Add Dock
+              </button>
+            )}
           </div>
         </div>
       </div>

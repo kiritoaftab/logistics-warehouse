@@ -6,6 +6,8 @@ import { Pencil, Plus } from "lucide-react";
 import AddSkuModal from "./modals/AddSkuModal";
 import ClientModal from "./modals/ClientModal";
 import http from "../../../api/http";
+import { useAccess } from "../../utils/useAccess";
+import { getUserRole } from "../../utils/authStorage";
 
 const ClientsTab = () => {
   const [filtersState, setFiltersState] = useState({
@@ -31,6 +33,14 @@ const ClientsTab = () => {
   // SKU modal
   const [showSkuModal, setShowSkuModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
+
+  const roleCode = getUserRole();
+  const isAdmin = roleCode === "ADMIN";
+  const access = useAccess("CLIENTs");
+  const canCreate = isAdmin || access.canCreate;
+  const canUpdate = isAdmin || access.canUpdate;
+  const canDelete = isAdmin || access.canDelete;
+  const showActionsColumn = canUpdate || canDelete;
 
   const filters = [
     {
@@ -158,32 +168,39 @@ const ClientsTab = () => {
           );
         },
       },
-      {
-        key: "actions",
-        title: "Actions",
-        render: (row) => (
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
-              title="Add SKU"
-              onClick={() => openAddSku(row)}
-            >
-              <Plus className="h-4 w-4" />
-              Add SKU
-            </button>
-
-            <button
-              type="button"
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="Edit Client"
-              onClick={() => openEditClient(row)}
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-          </div>
-        ),
-      },
+      ...(showActionsColumn
+        ? [
+            {
+              key: "actions",
+              title: "Actions",
+              render: (row) => (
+                <div className="flex items-center justify-end gap-2">
+                  {canCreate && (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
+                      title="Add SKU"
+                      onClick={() => openAddSku(row)}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add SKU
+                    </button>
+                  )}
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+                      title="Edit Client"
+                      onClick={() => openEditClient(row)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
     [],
   );
@@ -191,13 +208,15 @@ const ClientsTab = () => {
   return (
     <div>
       <div className="mb-4 flex items-center justify-end">
-        <button
-          type="button"
-          onClick={openAddClient}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
-        >
-          + Add Client
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={openAddClient}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+          >
+            + Add Client
+          </button>
+        )}
       </div>
 
       <FilterBar

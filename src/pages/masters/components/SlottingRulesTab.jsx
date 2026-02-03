@@ -3,6 +3,8 @@ import React, { useMemo, useState } from "react";
 import FilterBar from "../../components/FilterBar";
 import CusTable from "../../components/CusTable";
 import { Pencil, Copy, Trash2 } from "lucide-react";
+import { getUserRole } from "../../utils/authStorage";
+import { useAccess } from "../../utils/useAccess";
 
 const SlottingRulesTab = () => {
   const [filtersState, setFiltersState] = useState({
@@ -11,6 +13,14 @@ const SlottingRulesTab = () => {
     strategy: "All Strategies",
     status: "All Status",
   });
+
+  const roleCode = getUserRole();
+  const isAdmin = roleCode === "ADMIN";
+  const access = useAccess("LOCATIONS");
+  const canCreate = isAdmin || access.canCreate;
+  const canUpdate = isAdmin || access.canUpdate;
+  const canDelete = isAdmin || access.canDelete;
+  const showActionsColumn = canUpdate || canDelete;
 
   const filters = [
     {
@@ -180,38 +190,48 @@ const SlottingRulesTab = () => {
           );
         },
       },
-      {
-        key: "actions",
-        title: "Actions",
-        render: () => (
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="Edit"
-              onClick={() => {}}
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="Duplicate"
-              onClick={() => {}}
-            >
-              <Copy className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="Delete"
-              onClick={() => {}}
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ),
-      },
+      ...(showActionsColumn
+        ? [
+            {
+              key: "actions",
+              title: "Actions",
+              render: (row) => (
+                <div className="flex items-center justify-end gap-2">
+                  {canUpdate && (
+                    <>
+                      <button
+                        type="button"
+                        className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+                        title="Edit"
+                        onClick={() => {}}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+                    title="Duplicate"
+                    onClick={() => {}}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  {canDelete && (
+                    <button
+                      type="button"
+                      className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+                      title="Delete"
+                      onClick={() => {}}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
     [],
   );
@@ -219,13 +239,15 @@ const SlottingRulesTab = () => {
   return (
     <div>
       <div className="mb-4 flex items-center justify-end">
-        <button
-          type="button"
-          onClick={() => {}}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
-        >
-          + Add Rule
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={() => {}}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+          >
+            + Add Rule
+          </button>
+        )}
       </div>
 
       <FilterBar

@@ -29,7 +29,6 @@ const menuItems = [
   { name: "Outbound", icon: Upload, path: "/outbound" },
   { name: "Picking", icon: HandGrab, path: "/picking" },
   { name: "Packing", icon: PackageCheck, path: "/packing" },
-
   { name: "Shipping", icon: Truck, path: "/shipping" },
   { name: "Billing", icon: ReceiptText, path: "/billing" },
   { name: "Masters", icon: Database, path: "/masters" },

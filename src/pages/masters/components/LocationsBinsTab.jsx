@@ -4,6 +4,8 @@ import CusTable from "../../components/CusTable";
 import { Pencil, Lock, Trash2, RefreshCw } from "lucide-react";
 import http from "../../../api/http";
 import AddEditBinModal from "./modals/AddEditBinModal";
+import { getUserRole } from "../../utils/authStorage";
+import { useAccess } from "../../utils/useAccess";
 
 const LocationsBinsTab = () => {
   const [locations, setLocations] = useState([]);
@@ -22,6 +24,14 @@ const LocationsBinsTab = () => {
     status: "All Status",
     warehouse_id: "All Warehouses",
   });
+
+  const roleCode = getUserRole();
+  const isAdmin = roleCode === "ADMIN";
+  const access = useAccess("LOCATIONS");
+  const canCreate = isAdmin || access.canCreate;
+  const canUpdate = isAdmin || access.canUpdate;
+  const canDelete = isAdmin || access.canDelete;
+  const showActionsColumn = canUpdate || canDelete;
 
   // Fetch warehouses
   const fetchWarehouses = useCallback(async () => {
@@ -350,42 +360,54 @@ const LocationsBinsTab = () => {
           );
         },
       },
-      {
-        key: "actions",
-        title: "Actions",
-        render: (row) => (
-          <div className="flex items-center justify-start gap-2">
-            <button
-              type="button"
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="Edit"
-              onClick={() => handleEditBin(row)}
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-            {/* <button
-              type="button"
-              className={`rounded-md p-2 hover:bg-gray-100 ${row.is_active ? "text-yellow-600" : "text-green-600"}`}
-              title={row.is_active ? "Deactivate" : "Activate"}
-              onClick={() => handleToggleStatus(row)}
-            >
-              <Lock className="h-4 w-4" />
-            </button> */}
-            <button
-              type="button"
-              className={`rounded-md p-2 hover:bg-gray-100 ${deleteConfirm?.id === row.id ? "text-white bg-red-600" : "text-red-600"}`}
-              title={deleteConfirm?.id === row.id ? "Confirm Delete" : "Delete"}
-              onClick={() => handleDeleteBin(row)}
-            >
-              {deleteConfirm?.id === row.id ? (
-                <span className="text-xs font-medium">Confirm</span>
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        ),
-      },
+      ...(showActionsColumn
+        ? [
+            {
+              key: "actions",
+              title: "Actions",
+              render: (row) => (
+                <div className="flex items-center justify-start gap-2">
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+                      title="Edit"
+                      onClick={() => handleEditBin(row)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  )}
+                  {/* <button
+                    type="button"
+                    className={`rounded-md p-2 hover:bg-gray-100 ${row.is_active ? "text-yellow-600" : "text-green-600"}`}
+                    title={row.is_active ? "Deactivate" : "Activate"}
+                    onClick={() => handleToggleStatus(row)}
+                  >
+                    <Lock className="h-4 w-4" />
+                  </button> */}
+                  {canDelete && (
+                    <button
+                      type="button"
+                      className={`rounded-md p-2 hover:bg-gray-100 ${deleteConfirm?.id === row.id ? "text-white bg-red-600" : "text-red-600"}`}
+                      title={
+                        deleteConfirm?.id === row.id
+                          ? "Confirm Delete"
+                          : "Delete"
+                      }
+                      onClick={() => handleDeleteBin(row)}
+                    >
+                      {deleteConfirm?.id === row.id ? (
+                        <span className="text-xs font-medium">Confirm</span>
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
     [warehouses, deleteConfirm],
   );
@@ -428,13 +450,15 @@ const LocationsBinsTab = () => {
             <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
-          <button
-            type="button"
-            onClick={handleAddBin}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-          >
-            + Add Location
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={handleAddBin}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+            >
+              + Add Location
+            </button>
+          )}
         </div>
       </div>
 

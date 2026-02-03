@@ -35,7 +35,7 @@ const SKUsTab = () => {
 
   const roleCode = getUserRole();
   const isAdmin = roleCode === "ADMIN";
-  const access = useAccess("INVENTORY");
+  const access = useAccess("SKUS");
   const canCreateSku = isAdmin || access.canCreate;
   const canUpdateSku = isAdmin || access.canUpdate;
   const canDeleteSku = isAdmin || access.canDelete;
@@ -254,22 +254,28 @@ const SKUsTab = () => {
           );
         },
       },
-      {
-        key: "actions",
-        title: "Actions",
-        render: (row) => (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="Edit"
-              onClick={() => openEdit(row)}
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-          </div>
-        ),
-      },
+      ...(showActionsColumn
+        ? [
+            {
+              key: "actions",
+              title: "Actions",
+              render: (row) => (
+                <div className="flex items-center gap-2">
+                  {canUpdateSku && (
+                    <button
+                      type="button"
+                      className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+                      title="Edit"
+                      onClick={() => openEdit(row)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
     [clients, filtersState],
   );

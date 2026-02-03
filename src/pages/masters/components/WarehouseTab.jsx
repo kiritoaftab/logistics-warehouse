@@ -17,6 +17,8 @@ import {
   Search,
   RefreshCw,
 } from "lucide-react";
+import { getUserRole } from "../../utils/authStorage";
+import { useAccess } from "../../utils/useAccess";
 
 // ViewWarehouseModal component
 const ViewWarehouseModal = ({
@@ -261,6 +263,14 @@ const WarehouseTab = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
 
+  const roleCode = getUserRole();
+  const isAdmin = roleCode === "ADMIN";
+  const access = useAccess("LOCATIONS");
+  const canCreate = isAdmin || access.canCreate;
+  const canUpdate = isAdmin || access.canUpdate;
+  const canDelete = isAdmin || access.canDelete;
+  const showActionsColumn = canUpdate || canDelete;
+
   // Fetch warehouses on component mount
   const fetchWarehouses = async () => {
     setLoading(true);
@@ -461,35 +471,43 @@ const WarehouseTab = () => {
         </span>
       ),
     },
-    {
-      key: "actions",
-      title: "Actions",
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          {/* <button
-            onClick={() => openViewModal(row)}
-            className="rounded-md p-1.5 hover:bg-gray-100"
-            title="View Details"
-          >
-            <Eye className="h-4 w-4 text-gray-500" />
-          </button> */}
-          <button
-            onClick={() => openEditModal(row)}
-            className="rounded-md p-1.5 hover:bg-gray-100"
-            title="Edit"
-          >
-            <Edit2 className="h-4 w-4 text-blue-500" />
-          </button>
-          <button
-            onClick={() => handleDirectDelete(row)}
-            className="rounded-md p-1.5 hover:bg-gray-100"
-            title="Delete"
-          >
-            <Trash2 className="h-4 w-4 text-red-500" />
-          </button>
-        </div>
-      ),
-    },
+    ...(showActionsColumn
+      ? [
+          {
+            key: "actions",
+            title: "Actions",
+            render: (row) => (
+              <div className="flex items-center gap-2">
+                {/* <button
+                  onClick={() => openViewModal(row)}
+                  className="rounded-md p-1.5 hover:bg-gray-100"
+                  title="View Details"
+                >
+                  <Eye className="h-4 w-4 text-gray-500" />
+                </button> */}
+                {canUpdate && (
+                  <button
+                    onClick={() => openEditModal(row)}
+                    className="rounded-md p-1.5 hover:bg-gray-100"
+                    title="Edit"
+                  >
+                    <Edit2 className="h-4 w-4 text-blue-500" />
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    onClick={() => handleDirectDelete(row)}
+                    className="rounded-md p-1.5 hover:bg-gray-100"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </button>
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -511,13 +529,15 @@ const WarehouseTab = () => {
             <RefreshCw className="h-4 w-4" />
             <span className="hidden sm:inline">Refresh</span>
           </button> */}
-          <button
-            onClick={openAddModal}
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4" />
-            Add Warehouse
-          </button>
+          {canCreate && (
+            <button
+              onClick={openAddModal}
+              className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+              Add Warehouse
+            </button>
+          )}
         </div>
       </div>
 
