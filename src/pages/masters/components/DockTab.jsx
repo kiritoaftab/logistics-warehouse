@@ -352,7 +352,14 @@ const DockTab = () => {
         title: "Actions",
         render: (row) => (
           <div className="flex items-center justify-start gap-1">
-          
+            <button
+              type="button"
+              className="rounded-md p-2 text-blue-600 hover:bg-blue-50"
+              title="View Details"
+              onClick={() => handleViewDock(row)}
+            >
+              <Eye className="h-4 w-4" />
+            </button>
             <button
               type="button"
               className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
@@ -714,7 +721,21 @@ const DockTab = () => {
             Manage loading docks and their configurations
           </p>
         </div>
+        <div className="flex items-center gap-3">
+          
 
+          <div className="flex items-center gap-2">
+            
+            <button
+              type="button"
+              onClick={handleAddDock}
+              className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+              Add Dock
+            </button>
+          </div>
+        </div>
       </div>
 
       <FilterBar
