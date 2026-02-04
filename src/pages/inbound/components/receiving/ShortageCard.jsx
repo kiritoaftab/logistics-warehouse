@@ -1,40 +1,48 @@
-import React, { useState } from "react";
-import { AlertTriangle } from "lucide-react";
-
-const ShortageCard = ({ shortageUnits = 0 }) => {
-  const [reason, setReason] = useState("");
-  const [notes, setNotes] = useState("");
-
-  if (!shortageUnits) return null;
+//src/pages/inbound/components/receiving/ShortageCard
+const ShortageCard = ({ shortageUnits = 0, reasons = [], value, onChange }) => {
+  const enabled = shortageUnits > 0;
 
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-      <div className="flex items-center gap-2 text-sm font-semibold text-red-700 mb-3">
-        <AlertTriangle size={16} />
-        Shortage: {shortageUnits} Units
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-gray-900">Shortage</div>
+        <div
+          className={`text-sm font-semibold ${enabled ? "text-red-600" : "text-gray-400"}`}
+        >
+          {shortageUnits} Units
+        </div>
       </div>
 
-      <div className="mb-3">
-        <div className="text-xs font-medium text-red-700 mb-1">Reason</div>
+      <div className="mt-3">
+        <label className="text-xs text-gray-500">Reason</label>
         <select
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          className="w-full rounded-md border border-red-200 bg-white px-3 py-2 text-sm"
+          disabled={!enabled}
+          value={value?.reason || ""}
+          onChange={(e) => onChange({ ...value, reason: e.target.value })}
+          className="w-full mt-1 rounded-md border px-3 py-2 text-sm disabled:bg-gray-100"
         >
-          <option value="">Select Reason...</option>
-          <option value="short-shipped">Short Shipped</option>
-          <option value="damage-in-transit">Damage in Transit</option>
-          <option value="missing-pallet">Missing Pallet</option>
-          <option value="count-variance">Count Variance</option>
+          <option value="">Select</option>
+          {reasons.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
         </select>
       </div>
 
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="Add notes..."
-        className="w-full rounded-md border border-red-200 bg-white px-3 py-2 text-sm min-h-[90px]"
-      />
+      <div className="mt-3">
+        <label className="text-xs text-gray-500">Notes</label>
+        <textarea
+          disabled={!enabled}
+          value={value?.notes || ""}
+          onChange={(e) => onChange({ ...value, notes: e.target.value })}
+          className="w-full mt-1 rounded-md border px-3 py-2 text-sm disabled:bg-gray-100"
+          rows={3}
+          placeholder={
+            enabled ? "Enter shortage notes" : "No shortage for this line"
+          }
+        />
+      </div>
     </div>
   );
 };

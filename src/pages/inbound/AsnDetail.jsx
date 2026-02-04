@@ -97,10 +97,10 @@ const AsnDetail = () => {
       steps.push({ label: "In Receiving", state: "todo", time: "" });
     }
 
-    // Add GRN posted step if exists
+    // Add posted step if exists
     if (asnData.grn_posted_at) {
       steps.push({
-        label: "GRN Posted",
+        label: "Posted",
         state: "done",
         time: new Date(asnData.grn_posted_at).toLocaleString("en-US", {
           month: "short",
@@ -110,7 +110,7 @@ const AsnDetail = () => {
         }),
       });
     } else {
-      steps.push({ label: "GRN Posted", state: "todo", time: "" });
+      steps.push({ label: "Posted", state: "todo", time: "" });
     }
 
     // Add putaway step if exists

@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Printer } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import FormPage from "../components/forms/FormPage";
 import CusTable from "../components/CusTable";
@@ -7,113 +8,158 @@ import AttachmentsDropzone from "../components/forms/AttachmentsDropzone";
 
 import ReceivingSkuCard from "./components/receiving/ReceivingSkuCard";
 import ShortageCard from "./components/receiving/ShortageCard";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+
+import http from "../../api/http";
+import {
+  calcShortage,
+  calcTotals,
+  normalizeAsn,
+  toReceivingRows,
+} from "./components/utils/asnReceiving";
+import {
+  createPallet,
+  getAsnLinePallets,
+  getPallets,
+} from "./components/api/masters.api";
+import { useToast } from "@/pages/components/toast/ToastProvider";
+
+const SHORTAGE_REASONS = [
+  "MISSING",
+  "WRONG_SKU",
+  "PARTIAL_SHIPMENT",
+  "DAMAGED_IN_TRANSIT",
+  "OTHER",
+];
 
 const AsnReceiving = () => {
-  const { asnNo } = useParams();
   const location = useLocation();
-  const { asnData } = location.state || {};
-  const [attachments, setAttachments] = useState([]);
   const navigate = useNavigate();
-  // right panel form
-  const [scanSku, setScanSku] = useState("99201");
-  const [palletId, setPalletId] = useState("P-10023");
-  const [batchNo, setBatchNo] = useState("B-2023-X");
-  const [goodQty, setGoodQty] = useState(50);
-  const [damagedQty, setDamagedQty] = useState(0);
+  const toast = useToast();
 
-  const [receipts, setReceipts] = useState([
-    { id: "R1", pallet: "P-10020", batch: "B-2023-X", qty: 200 },
-    { id: "R2", pallet: "P-10021", batch: "B-2023-Y", qty: 250 },
-  ]);
+  const { asnData: navAsn } = location.state || {};
 
-  // left table
-  const receivingLines = useMemo(
-    () => [
-      {
-        id: "L1",
-        sku: "SKU-99201",
-        skuDesc: "Wireless Mouse - Black",
-        uom: "EA",
-        exp: 500,
-        rcvd: 450,
-        dmg: 0,
-        flags: "Batch",
-        status: "Partial",
-      },
-      {
-        id: "L2",
-        sku: "SKU-99205",
-        skuDesc: "Mech Keyboard - RGB",
-        uom: "EA",
-        exp: 200,
-        rcvd: 0,
-        dmg: 0,
-        flags: "Serial",
-        status: "Pending",
-      },
-      {
-        id: "L3",
-        sku: "SKU-88100",
-        skuDesc: "USB-C Cable 2m",
-        uom: "PK",
-        exp: 500,
-        rcvd: 0,
-        dmg: 0,
-        flags: "-",
-        status: "Pending",
-      },
-      {
-        id: "L4",
-        sku: "SKU-77299",
-        skuDesc: "Monitor Stand",
-        uom: "EA",
-        exp: 50,
-        rcvd: 50,
-        dmg: 0,
-        flags: "-",
-        status: "Completed",
-      },
-    ],
-    [],
-  );
+  const [asn, setAsn] = useState(navAsn || null);
+  const [attachments, setAttachments] = useState([]);
 
-  const [activeLineId, setActiveLineId] = useState(receivingLines[0]?.id);
-  const activeLine = useMemo(
-    () =>
-      receivingLines.find((x) => x.id === activeLineId) || receivingLines[0],
-    [receivingLines, activeLineId],
-  );
+  const [loading, setLoading] = useState(false);
+
+  const [pallets, setPallets] = useState([]);
+  const [selectedPalletId, setSelectedPalletId] = useState("");
+
+  const [palletType, setPalletType] = useState("");
+  const [palletLocation, setPalletLocation] = useState("");
+
+  const [batchNo, setBatchNo] = useState("");
+  const [serialNo, setSerialNo] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [goodQty, setGoodQty] = useState("");
+  const [damagedQty, setDamagedQty] = useState("");
+
+  const [shortageMeta, setShortageMeta] = useState({});
+
+  const rows = useMemo(() => toReceivingRows(asn?.lines || []), [asn]);
+  const [activeLineId, setActiveLineId] = useState(null);
+  const [lineReceipts, setLineReceipts] = useState([]);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
+
+  const clearSelection = () => {
+    setActiveLineId(null);
+
+    setBatchNo("");
+    setSerialNo("");
+    setExpiryDate("");
+    setGoodQty(0);
+    setDamagedQty(0);
+    setSelectedPalletId("");
+  };
+
+  const fetchAsn = async () => {
+    if (!navAsn?.id) return;
+    const res = await http.get(`/asns/${navAsn.id}`);
+    setAsn(normalizeAsn(res));
+  };
+
+  const fetchPallets = async () => {
+    const list = await getPallets();
+    setPallets(list || []);
+  };
+
+  useEffect(() => {
+    if (navAsn?.id) fetchAsn();
+    fetchPallets();
+  }, [navAsn?.id]);
+
+  const activeLine = useMemo(() => {
+    if (!activeLineId) return null;
+    return rows.find((x) => String(x.id) === String(activeLineId)) || null;
+  }, [rows, activeLineId]);
+
+  useEffect(() => {
+    const loadReceipts = async () => {
+      if (!activeLine?.asnLineId) {
+        setLineReceipts([]);
+        return;
+      }
+
+      setReceiptsLoading(true);
+      try {
+        const list = await getAsnLinePallets(activeLine.asnLineId);
+        setLineReceipts(list || []);
+      } catch (err) {
+        const msg =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to load receipts";
+        toast.error(msg);
+        setLineReceipts([]);
+      } finally {
+        setReceiptsLoading(false);
+      }
+    };
+
+    loadReceipts();
+  }, [activeLine?.asnLineId]);
+
+  const totals = useMemo(() => calcTotals(asn), [asn]);
+
+  const shortageUnits = useMemo(() => {
+    const raw = activeLine?.raw;
+    return calcShortage(raw);
+  }, [activeLine]);
+
+  const canPostGrn = asn?.status === "IN_RECEIVING";
 
   const columns = useMemo(
     () => [
-      { key: "idx", title: "#", render: (_row, idx) => idx + 1 },
+      {
+        key: "idx",
+        title: "#",
+        render: (_row, idx) => idx + 1,
+      },
       {
         key: "skuDetails",
         title: "SKU Details",
         render: (row) => (
-          <div className="min-w-0">
-            <div className="text-sm font-medium text-gray-900">{row.sku}</div>
-            <div className="text-xs text-gray-500 truncate">{row.skuDesc}</div>
-          </div>
+          <button
+            type="button"
+            className="w-full text-left"
+            onClick={() => {
+              setActiveLineId(String(row.id));
+            }}
+          >
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-gray-900">{row.sku}</div>
+              <div className="text-xs text-gray-500 truncate">
+                {row.skuDesc}
+              </div>
+            </div>
+          </button>
         ),
       },
       { key: "uom", title: "UOM" },
       { key: "exp", title: "Exp" },
       { key: "rcvd", title: "Rcvd" },
       { key: "dmg", title: "Dmg" },
-      {
-        key: "flags",
-        title: "Flags",
-        render: (row) =>
-          row.flags && row.flags !== "-" ? (
-            <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
-              {row.flags}
-            </span>
-          ) : (
-            <span className="text-gray-400">-</span>
-          ),
-      },
       {
         key: "status",
         title: "Status",
@@ -136,197 +182,332 @@ const AsnReceiving = () => {
     [],
   );
 
-  const addToReceiving = () => {
-    const qty = Number(goodQty || 0) + Number(damagedQty || 0);
-    if (!qty) return;
+  const onCreatePallet = async () => {
+    if (!asn?.warehouse_id) {
+      toast.error("Warehouse is missing.");
+      return;
+    }
 
-    setReceipts((p) => [
-      ...p,
-      {
-        id: String(Date.now()),
-        pallet: palletId || "-",
-        batch: batchNo || "-",
-        qty,
-      },
-    ]);
+    setLoading(true);
+    try {
+      const created = await createPallet({
+        warehouse_id: asn.warehouse_id,
+        pallet_type: palletType || "",
+        current_location: palletLocation || "",
+      });
 
-    // reset inputs (optional)
-    setGoodQty(0);
-    setDamagedQty(0);
+      await fetchPallets();
+
+      if (created?.id) {
+        setSelectedPalletId(String(created.id));
+        toast.success(
+          `Pallet created: ${created.pallet_id || `ID ${created.id}`}`,
+        );
+      } else {
+        toast.success("Pallet created.");
+      }
+    } catch (err) {
+      const status = err?.response?.status;
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to create pallet";
+
+      toast.error(`${msg}${status ? ` (HTTP ${status})` : ""}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteReceipt = (id) => {
-    setReceipts((p) => p.filter((x) => x.id !== id));
+  const onReceive = async () => {
+    console.log("onReceive fired", {
+      activeLine,
+      goodQty,
+      damagedQty,
+      selectedPalletId,
+    });
+
+    if (!activeLine?.asnLineId) {
+      toast.error("Select a receiving line first.");
+      console.warn("BLOCK: no activeLine.asnLineId");
+      return;
+    }
+
+    const good = Number(goodQty || 0);
+    const dmg = Number(damagedQty || 0);
+    if (good + dmg <= 0) {
+      toast.error("Enter Good Qty or Damaged Qty.");
+      console.warn("BLOCK: qty is zero");
+      return;
+    }
+
+    const meta = shortageMeta[activeLine.asnLineId] || {};
+    const hasShortage = shortageUnits > 0;
+
+    if (hasShortage && !meta.reason) {
+      toast.error("Shortage reason is required.");
+      console.warn("BLOCK: shortage reason missing");
+      return;
+    }
+
+    const payload = {
+      batch_no: batchNo || undefined,
+      serial_no: serialNo || undefined,
+      expiry_date: expiryDate || undefined,
+      good_qty: good,
+      damaged_qty: dmg,
+
+      ...(selectedPalletId
+        ? { pallet_id: Number(selectedPalletId) }
+        : { pallet_type: palletType || "" }),
+
+      ...(hasShortage
+        ? {
+            shortage_reason: meta.reason,
+            shortage_notes: meta.notes || "",
+          }
+        : {}),
+    };
+
+    console.log("POST /asn-lines/:id/receive payload =>", payload);
+
+    setLoading(true);
+    try {
+      const res = await http.post(
+        `/asn-lines/${activeLine.asnLineId}/receive`,
+        payload,
+      );
+      console.log("Receive API success:", res?.data);
+
+      toast.success("Received quantity added.");
+      await fetchAsn();
+      const list = await getAsnLinePallets(activeLine.asnLineId);
+      setLineReceipts(list || []);
+
+      setGoodQty("");
+      setDamagedQty("");
+    } catch (err) {
+      console.error("Receive API failed:", err);
+
+      const status = err?.response?.status;
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Receive failed";
+
+      toast.error(`${msg}${status ? ` (HTTP ${status})` : ""}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onPostGrn = async () => {
+    if (!canPostGrn || !asn?.id) return;
+
+    setLoading(true);
+    try {
+      await http.post(`/grns/post-from-asn`, { asn_id: asn.id });
+
+      toast.success("GRN posted successfully.");
+      navigate("/inbound");
+    } catch (err) {
+      const status = err?.response?.status;
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to post GRN";
+
+      toast.error(`${msg}${status ? ` (HTTP ${status})` : ""}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <FormPage
-      breadcrumbs={[
-        { label: "Inbound", to: "/inbound" },
-        { label: "ASN", to: `/ASNdetails/${asnData?.id}` },
-        { label: "Receiving" },
-      ]}
-      title="ASN Receiving"
-      topActions={
-        <>
+    <>
+      <FormPage
+        hideFooter
+        breadcrumbs={[
+          { label: "Inbound", to: "/inbound" },
+          { label: "ASN", to: `/ASNdetails/${asn?.id}` },
+          { label: "Receiving" },
+        ]}
+        title={`ASN Receiving ${asn?.asn_no ? `- ${asn.asn_no}` : ""}`}
+        topActions={
+          <>
+            <button
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 border rounded-md text-sm bg-white flex items-center gap-2"
+            >
+              <ArrowLeft size={16} />
+              Back
+            </button>
+
+            <button className="px-4 py-2 border rounded-md text-sm bg-white flex items-center gap-2">
+              <Printer size={16} />
+              Print GRN
+            </button>
+          </>
+        }
+        bottomLeft={
+          <div className="flex items-center gap-8 text-xs text-gray-500"></div>
+        }
+        bottomRight={
           <button
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 border rounded-md text-sm bg-white flex items-center gap-2"
+            disabled={!canPostGrn || loading}
+            onClick={onPostGrn}
+            className={[
+              "px-4 py-2 rounded-md text-sm text-white",
+              canPostGrn ? "bg-primary" : "bg-gray-300 cursor-not-allowed",
+            ].join(" ")}
           >
-            <ArrowLeft size={16} />
-            Back
-          </button>
-          <button className="px-4 py-2 border rounded-md text-sm bg-white flex items-center gap-2">
-            <Printer size={16} />
-            Print GRN
-          </button>
-        </>
-      }
-      bottomLeft={
-        <div className="flex items-center gap-8 text-xs text-gray-500">
-          <div>
-            <div className="uppercase">Total Expected</div>
-            <div className="text-base font-semibold text-gray-900">1,200</div>
-          </div>
-          <div>
-            <div className="uppercase">Received Good</div>
-            <div className="text-base font-semibold text-green-600">450</div>
-          </div>
-          <div>
-            <div className="uppercase">Damaged</div>
-            <div className="text-base font-semibold text-red-600">0</div>
-          </div>
-          <div>
-            <div className="uppercase">Discrepancy</div>
-            <div className="text-base font-semibold text-red-600">-50</div>
-          </div>
-        </div>
-      }
-      bottomRight={
-        <>
-          <button className="px-4 py-2 border rounded-md text-sm bg-white">
-            Save Draft
-          </button>
-          <button className="px-4 py-2 rounded-md text-sm bg-primary text-white">
             Post GRN
           </button>
-        </>
-      }
-    >
-      {/* TOP INFO STRIP */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4 mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <InfoItem label="ASN No" value="ASN-10293" />
-          <InfoItem label="Client" value="Acme Corp" />
-          <InfoItem label="Supplier" value="Global Supplies Ltd" />
-          <InfoItem label="ETA" value="Today, 08:30 AM" />
-          <InfoItem
-            label="Dock Door"
-            value={
-              <select className="w-full rounded-md border border-gray-200 bg-slate-50 px-3 py-2 text-sm">
-                <option>D-04</option>
-                <option>D-01</option>
-                <option>D-02</option>
-              </select>
-            }
-          />
-          <InfoItem
-            label="Progress"
-            value={
-              <div className="text-sm">
-                <span className="font-semibold text-green-600">450</span>
-                <span className="text-gray-400"> / 1,200 Units</span>
+        }
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          <div className="lg:col-span-8">
+            <div className="rounded-lg border border-gray-200 bg-white">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div className="text-sm font-semibold text-gray-900">
+                  Receiving Lines ({rows.length})
+                </div>
               </div>
-            }
-          />
-        </div>
-      </div>
 
-      {/* MAIN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* LEFT: Receiving Lines */}
-        <div className="lg:col-span-8 h-full">
-          <div className="rounded-lg border border-gray-200 bg-white">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-900">
-                Receiving Lines (15)
-              </div>
-              <button className="px-3 py-1.5 border rounded-md text-sm bg-white">
-                Auto-calc shorts
-              </button>
-            </div>
-
-            <div className="p-0">
-              {/* NOTE: CusTable expects row.id and columns */}
-              <CusTable
-                columns={columns.map((c) => ({
-                  ...c,
-                  render:
-                    c.key === "skuDetails"
-                      ? (row) => (
-                          <button
-                            className="w-full text-left"
-                            onClick={() => setActiveLineId(row.id)}
-                          >
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-gray-900">
-                                {row.sku}
-                              </div>
-                              <div className="text-xs text-gray-500 truncate">
-                                {row.skuDesc}
-                              </div>
-                            </div>
-                          </button>
-                        )
-                      : c.render,
-                }))}
-                data={receivingLines}
-              />
+              <CusTable columns={columns} data={rows} />
             </div>
           </div>
+
+          <div className="lg:col-span-4 space-y-4">
+            {!activeLine ? (
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="text-sm font-semibold text-gray-900">
+                  Select a receiving line
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Click a SKU from the left table to start receiving.
+                </div>
+              </div>
+            ) : (
+              <>
+                <ReceivingSkuCard
+                  skuTitle={`${activeLine?.sku || "-"}: ${activeLine?.skuDesc || "-"}`}
+                  partialText={
+                    activeLine
+                      ? `${activeLine.status}: ${
+                          Number(activeLine.rcvd || 0) +
+                          Number(activeLine.dmg || 0)
+                        } / ${activeLine.exp}`
+                      : "-"
+                  }
+                  pallets={pallets}
+                  selectedPalletId={selectedPalletId}
+                  setSelectedPalletId={setSelectedPalletId}
+                  onCreatePallet={onCreatePallet}
+                  palletType={palletType}
+                  setPalletType={setPalletType}
+                  palletLocation={palletLocation}
+                  setPalletLocation={setPalletLocation}
+                  batchNo={batchNo}
+                  setBatchNo={setBatchNo}
+                  serialNo={serialNo}
+                  setSerialNo={setSerialNo}
+                  expiryDate={expiryDate}
+                  setExpiryDate={setExpiryDate}
+                  goodQty={goodQty}
+                  setGoodQty={setGoodQty}
+                  damagedQty={damagedQty}
+                  setDamagedQty={setDamagedQty}
+                  onReceive={onReceive}
+                  loading={loading}
+                  receipts={lineReceipts}
+                  receiptsLoading={receiptsLoading}
+                  onCancel={clearSelection}
+                />
+
+                <ShortageCard
+                  shortageUnits={shortageUnits}
+                  reasons={SHORTAGE_REASONS}
+                  value={
+                    shortageMeta[activeLine?.asnLineId] || {
+                      reason: "",
+                      notes: "",
+                    }
+                  }
+                  onChange={(next) =>
+                    setShortageMeta((p) => ({
+                      ...p,
+                      [activeLine.asnLineId]: next,
+                    }))
+                  }
+                />
+
+                <AttachmentsDropzone
+                  value={attachments}
+                  onChange={setAttachments}
+                />
+              </>
+            )}
+          </div>
         </div>
+      </FormPage>
+      <div className="sticky bottom-[-18px] mt-6 bg-white border-t">
+        <div className="px-4 md:px-6 py-3">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            {/* Totals */}
+            <div className="grid grid-cols-2 md:flex md:items-center gap-3 md:gap-8 text-xs text-gray-500">
+              <div>
+                <div className="uppercase">Total Expected</div>
+                <div className="text-base font-semibold text-gray-900">
+                  {totals.totalExpected}
+                </div>
+              </div>
 
-        {/* RIGHT: SKU Panel + Shortage + Attachments */}
-        <div className="lg:col-span-4 h-full space-y-4">
-          <ReceivingSkuCard
-            skuTitle={`${activeLine?.sku}: ${activeLine?.skuDesc}`}
-            partialText="Partial: 450 / 500"
-            scanSku={scanSku}
-            setScanSku={setScanSku}
-            palletId={palletId}
-            setPalletId={setPalletId}
-            batchNo={batchNo}
-            setBatchNo={setBatchNo}
-            goodQty={goodQty}
-            setGoodQty={setGoodQty}
-            damagedQty={damagedQty}
-            setDamagedQty={setDamagedQty}
-            onAdd={addToReceiving}
-            receipts={receipts}
-            onDeleteReceipt={deleteReceipt}
-          />
+              <div>
+                <div className="uppercase">Received Good</div>
+                <div className="text-base font-semibold text-green-600">
+                  {totals.receivedGood}
+                </div>
+              </div>
 
-          <ShortageCard shortageUnits={50} />
+              <div>
+                <div className="uppercase">Damaged</div>
+                <div className="text-base font-semibold text-red-600">
+                  {totals.damaged}
+                </div>
+              </div>
 
-          <div className="">
-            <AttachmentsDropzone
-              value={attachments}
-              onChange={setAttachments}
-            />
+              <div>
+                <div className="uppercase">Discrepancy</div>
+                <div
+                  className={`text-base font-semibold ${
+                    totals.discrepancy < 0 ? "text-red-600" : "text-gray-900"
+                  }`}
+                >
+                  {totals.discrepancy}
+                </div>
+              </div>
+            </div>
+
+            {/* Action */}
+            <button
+              disabled={!canPostGrn || loading}
+              onClick={onPostGrn}
+              className={[
+                "w-full md:w-auto px-4 py-2 rounded-md text-sm text-white",
+                canPostGrn ? "bg-primary" : "bg-gray-300 cursor-not-allowed",
+              ].join(" ")}
+            >
+              Post GRN
+            </button>
           </div>
         </div>
       </div>
-    </FormPage>
+    </>
   );
 };
-
-const InfoItem = ({ label, value }) => (
-  <div>
-    <div className="text-[11px] font-medium text-gray-500 uppercase mb-1">
-      {label}
-    </div>
-    <div className="text-sm font-semibold text-gray-900">{value}</div>
-  </div>
-);
 
 export default AsnReceiving;

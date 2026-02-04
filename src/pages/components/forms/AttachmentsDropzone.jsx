@@ -7,8 +7,7 @@ import {
   X,
   Plus,
 } from "lucide-react";
-
-// import uploadToAzureStorage from "../uploadToAzureStorage";
+import uploadToAzureStorage from "../../../constant/uploadToAzureStorage";
 
 const ACCEPTED_MIMES = ["application/pdf", "image/png", "image/jpeg"];
 const ACCEPTED_EXT = /\.(pdf|png|jpe?g)$/i;
@@ -18,8 +17,11 @@ const isAllowed = (file) =>
 
 const bytesToKB = (b) => `${Math.round((b || 0) / 1024)} KB`;
 
+const safeName = (name = "") =>
+  name.replace(/[^\w.\-]+/g, "_").replace(/_+/g, "_");
+
 const AttachmentsDropzone = ({
-  value = [], // [{ name, url, type, size }]
+  value = [],
   onChange,
   maxFiles = 10,
   className = "",
@@ -40,35 +42,27 @@ const AttachmentsDropzone = ({
     const valid = fileArr.filter(isAllowed);
     const spaceLeft = Math.max(0, maxFiles - value.length);
     const toUpload = valid.slice(0, spaceLeft);
-    console.log("toUpload", toUpload);
     if (toUpload.length === 0) return;
 
     try {
       setUploading(true);
 
-      // const uploaded = [];
-      // for (const f of toUpload) {
-      //   const res = await uploadToAzureStorage(f);
-      //   const url = typeof res === "string" ? res : res?.url || res?.blobUrl;
+      const uploaded = await Promise.all(
+        toUpload.map(async (f) => {
+          const blobName = `attachments/${Date.now()}-${safeName(f.name)}`;
 
-      //   uploaded.push({
-      //     name: f.name,
-      //     type: f.type,
-      //     size: f.size,
-      //     url,
-      //   });
-      // }
-      // onChange?.([...(value || []), ...uploaded]);
+          const url = await uploadToAzureStorage(f, blobName);
 
-      onChange?.([
-        ...(value || []),
-        ...toUpload.map((f) => ({
-          name: f.name,
-          type: f.type,
-          size: f.size,
-          url: URL.createObjectURL(f),
-        })),
-      ]);
+          return {
+            name: f.name,
+            type: f.type,
+            size: f.size,
+            url,
+          };
+        }),
+      );
+
+      onChange?.([...(value || []), ...uploaded]);
     } catch (e) {
       console.error("Upload failed", e);
     } finally {
@@ -128,7 +122,6 @@ const AttachmentsDropzone = ({
                   key={`${f.name}-${idx}`}
                   className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3"
                 >
-                  {/* Thumbnail */}
                   <div className="h-12 w-12 rounded-md bg-gray-50 border flex items-center justify-center overflow-hidden">
                     {isImg ? (
                       <img
@@ -143,7 +136,6 @@ const AttachmentsDropzone = ({
                     )}
                   </div>
 
-                  {/* Meta */}
                   <div className="min-w-0 flex-1">
                     <a
                       href={f.url}
