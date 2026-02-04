@@ -1,24 +1,86 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import FilterBar from "../../components/FilterBar";
 import CusTable from "../../components/CusTable";
-import { Pencil, Lock } from "lucide-react";
+import { Pencil, Lock, Trash2, RefreshCw } from "lucide-react";
+import http from "../../../api/http";
+import AddEditBinModal from "./modals/AddEditBinModal";
 
 const LocationsBinsTab = () => {
+  const [locations, setLocations] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
   const [filtersState, setFiltersState] = useState({
     search: "",
     zone: "All Zones",
     type: "All Types",
     status: "All Status",
+    warehouse_id: "All Warehouses",
   });
 
+  // Fetch warehouses
+  const fetchWarehouses = useCallback(async () => {
+    try {
+      const response = await http.get("/warehouses");
+      if (response.data.success) {
+        setWarehouses(response.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching warehouses:", err);
+    }
+  }, []);
+
+  // Fetch locations
+  const fetchLocations = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await http.get("/locations");
+      if (response.data.success) {
+        setLocations(response.data.data.locations);
+      } else {
+        throw new Error("Failed to fetch locations");
+      }
+    } catch (err) {
+      console.error("Error fetching locations:", err);
+      setError("Failed to load locations. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchWarehouses();
+    fetchLocations();
+  }, [fetchWarehouses, fetchLocations]);
+
+  // Update filters with dynamic options
   const filters = [
     {
       key: "search",
       type: "search",
       label: "Search",
-      placeholder: "Search bin code...",
+      placeholder: "Search location code...",
       value: filtersState.search,
       className: "w-[280px]",
+    },
+    {
+      key: "warehouse_id",
+      label: "Warehouse",
+      value: filtersState.warehouse_id,
+      options: [
+        "All Warehouses",
+        ...warehouses.map((w) => ({
+          label: w.warehouse_name,
+          value: w.id,
+        })),
+      ],
+      className: "w-[220px]",
     },
     {
       key: "zone",
@@ -26,11 +88,9 @@ const LocationsBinsTab = () => {
       value: filtersState.zone,
       options: [
         "All Zones",
-        "Storage Zone A",
-        "Storage Zone B",
-        "Pick Face",
-        "Receiving Zone",
-        "Cold Storage",
+        ...Array.from(
+          new Set(locations.map((l) => l.zone).filter(Boolean)),
+        ).sort(),
       ],
       className: "w-[220px]",
     },
@@ -38,14 +98,19 @@ const LocationsBinsTab = () => {
       key: "type",
       label: "Type",
       value: filtersState.type,
-      options: ["All Types", "Pallet Racking", "Shelf Bin", "Floor Stack"],
+      options: [
+        "All Types",
+        ...Array.from(
+          new Set(locations.map((l) => l.location_type).filter(Boolean)),
+        ).sort(),
+      ],
       className: "w-[220px]",
     },
     {
       key: "status",
       label: "Status",
       value: filtersState.status,
-      options: ["All Status", "Active", "Blocked"],
+      options: ["All Status", "Active", "Inactive"],
       className: "w-[220px]",
     },
   ];
@@ -56,6 +121,7 @@ const LocationsBinsTab = () => {
   const onReset = () =>
     setFiltersState({
       search: "",
+      warehouse_id: "All Warehouses",
       zone: "All Zones",
       type: "All Types",
       status: "All Status",
@@ -63,116 +129,103 @@ const LocationsBinsTab = () => {
 
   const onApply = () => {}; // UI only
 
-  // UI-only sample data (no APIs yet)
-  const rows = useMemo(
-    () => [
-      {
-        id: "A-01-01-01",
-        zone: "Storage Zone A",
-        bin_code: "A-01-01-01",
-        type: "Pallet Racking",
-        capacity: "2 Pallets",
-        utilization: 50,
-        allowed_skus: "Any",
-        status: "Active",
-      },
-      {
-        id: "A-01-01-02",
-        zone: "Storage Zone A",
-        bin_code: "A-01-01-02",
-        type: "Pallet Racking",
-        capacity: "2 Pallets",
-        utilization: 0,
-        allowed_skus: "Any",
-        status: "Active",
-      },
-      {
-        id: "B-04-02-10",
-        zone: "Storage Zone B",
-        bin_code: "B-04-02-10",
-        type: "Pallet Racking",
-        capacity: "2 Pallets",
-        utilization: 100,
-        allowed_skus: "Heavy Items",
-        status: "Active",
-      },
-      {
-        id: "P-02-05",
-        zone: "Pick Face",
-        bin_code: "P-02-05",
-        type: "Shelf Bin",
-        capacity: "50 Liters",
-        utilization: 75,
-        allowed_skus: "Small Parts",
-        status: "Active",
-      },
-      {
-        id: "REC-DOCK-1",
-        zone: "Receiving Zone",
-        bin_code: "REC-DOCK-1",
-        type: "Floor Stack",
-        capacity: "N/A",
-        utilization: 20,
-        allowed_skus: "Any",
-        status: "Blocked",
-      },
-      {
-        id: "C-01-05",
-        zone: "Cold Storage",
-        bin_code: "C-01-05",
-        type: "Pallet Racking",
-        capacity: "1 Pallet",
-        utilization: 0,
-        allowed_skus: "Frozen Goods",
-        status: "Active",
-      },
-      {
-        id: "P-02-06",
-        zone: "Pick Face",
-        bin_code: "P-02-06",
-        type: "Shelf Bin",
-        capacity: "50 Liters",
-        utilization: 90,
-        allowed_skus: "Small Parts",
-        status: "Active",
-      },
-      {
-        id: "B-04-02-11",
-        zone: "Storage Zone B",
-        bin_code: "B-04-02-11",
-        type: "Pallet Racking",
-        capacity: "2 Pallets",
-        utilization: 10,
-        allowed_skus: "Heavy Items",
-        status: "Active",
-      },
-    ],
-    [],
-  );
+  const handleAddBin = () => {
+    setSelectedLocation(null);
+    setIsEditing(false);
+    setShowModal(true);
+  };
+
+  const handleEditBin = (location) => {
+    setSelectedLocation(location);
+    setIsEditing(true);
+    setShowModal(true);
+  };
+
+  const handleToggleStatus = async (location) => {
+    try {
+      const newStatus = !location.is_active;
+      // You'll need an API endpoint for updating status
+      // For now, we'll just update locally
+      setLocations((prev) =>
+        prev.map((loc) =>
+          loc.id === location.id ? { ...loc, is_active: newStatus } : loc,
+        ),
+      );
+    } catch (err) {
+      console.error("Error toggling status:", err);
+      setError("Failed to update location status");
+    }
+  };
+
+  const handleDeleteBin = async (location) => {
+    if (!deleteConfirm || deleteConfirm.id !== location.id) {
+      setDeleteConfirm({
+        id: location.id,
+        code: location.location_code,
+      });
+      return;
+    }
+
+    try {
+      await http.delete(`/locations/${location.id}`);
+      setLocations((prev) => prev.filter((loc) => loc.id !== location.id));
+      setDeleteConfirm(null);
+    } catch (err) {
+      console.error("Error deleting location:", err);
+      setError("Failed to delete location");
+      setDeleteConfirm(null);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchLocations();
+  };
+
+  const handleModalClose = (refresh = false) => {
+    setShowModal(false);
+    setSelectedLocation(null);
+    if (refresh) {
+      fetchLocations();
+    }
+  };
 
   const filteredRows = useMemo(() => {
     const q = (filtersState.search || "").toLowerCase().trim();
 
-    return rows.filter((r) => {
+    return locations.filter((location) => {
       const matchesSearch =
         !q ||
-        `${r.bin_code} ${r.zone} ${r.type} ${r.allowed_skus}`
+        `${location.location_code} ${location.zone || ""} ${location.location_type || ""}`
           .toLowerCase()
           .includes(q);
 
+      const matchesWarehouse =
+        filtersState.warehouse_id === "All Warehouses" ||
+        location.warehouse_id.toString() === filtersState.warehouse_id;
+
       const matchesZone =
-        filtersState.zone === "All Zones" || r.zone === filtersState.zone;
+        filtersState.zone === "All Zones" ||
+        location.zone === filtersState.zone ||
+        (!location.zone && filtersState.zone === "All Zones");
 
       const matchesType =
-        filtersState.type === "All Types" || r.type === filtersState.type;
+        filtersState.type === "All Types" ||
+        location.location_type === filtersState.type;
 
+      const statusText = location.is_active ? "Active" : "Inactive";
       const matchesStatus =
         filtersState.status === "All Status" ||
-        r.status === filtersState.status;
+        statusText === filtersState.status;
 
-      return matchesSearch && matchesZone && matchesType && matchesStatus;
+      return (
+        matchesSearch &&
+        matchesWarehouse &&
+        matchesZone &&
+        matchesType &&
+        matchesStatus
+      );
     });
-  }, [rows, filtersState]);
+  }, [locations, filtersState]);
 
   const UtilBar = ({ pct }) => (
     <div className="flex items-center gap-2">
@@ -186,31 +239,103 @@ const LocationsBinsTab = () => {
     </div>
   );
 
+  const getLocationTypeDisplay = (type) => {
+    const typeMap = {
+      STORAGE: "Storage",
+      RECEIVING: "Receiving",
+      SHIPPING: "Shipping",
+      DOCK: "Dock",
+      STAGING: "Staging",
+      QUARANTINE: "Quarantine",
+      PICKING: "Picking",
+    };
+    return typeMap[type] || type;
+  };
+
+  const getCapacityDisplay = (capacity, currentUsage, locationType) => {
+    if (
+      locationType === "RECEIVING" ||
+      locationType === "SHIPPING" ||
+      locationType === "DOCK"
+    ) {
+      return "N/A";
+    }
+    return `${currentUsage || 0} / ${capacity} units`;
+  };
+
+  const getWarehouseName = (warehouseId) => {
+    const warehouse = warehouses.find((w) => w.id === warehouseId);
+    return warehouse ? warehouse.warehouse_name : "Unknown";
+  };
+
   const columns = useMemo(
     () => [
-      { key: "zone", title: "Zone" },
       {
-        key: "bin_code",
-        title: "Bin Code",
+        key: "warehouse",
+        title: "Warehouse",
+        render: (row) => getWarehouseName(row.warehouse_id),
+      },
+      {
+        key: "zone",
+        title: "Zone",
+        render: (row) => row.zone || "-",
+      },
+      {
+        key: "location_code",
+        title: "Location Code",
         render: (row) => (
           <span className="text-sm font-semibold text-blue-600">
-            {row.bin_code}
+            {row.location_code}
           </span>
         ),
       },
-      { key: "type", title: "Type" },
-      { key: "capacity", title: "Capacity" },
+      {
+        key: "location_type",
+        title: "Type",
+        render: (row) => getLocationTypeDisplay(row.location_type),
+      },
+      {
+        key: "capacity",
+        title: "Capacity",
+        render: (row) =>
+          getCapacityDisplay(
+            row.capacity,
+            row.current_usage,
+            row.location_type,
+          ),
+      },
       {
         key: "utilization",
         title: "Utilization",
-        render: (row) => <UtilBar pct={row.utilization} />,
+        render: (row) => <UtilBar pct={row.utilization_percent} />,
       },
-      { key: "allowed_skus", title: "Allowed SKUs" },
+      {
+        key: "is_pickable",
+        title: "Pickable",
+        render: (row) => (
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${row.is_pickable ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}
+          >
+            {row.is_pickable ? "Yes" : "No"}
+          </span>
+        ),
+      },
+      {
+        key: "is_putawayable",
+        title: "Putawayable",
+        render: (row) => (
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${row.is_putawayable ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}
+          >
+            {row.is_putawayable ? "Yes" : "No"}
+          </span>
+        ),
+      },
       {
         key: "status",
         title: "Status",
         render: (row) => {
-          const isActive = row.status === "Active";
+          const isActive = row.is_active;
           return (
             <span
               className={[
@@ -220,7 +345,7 @@ const LocationsBinsTab = () => {
                   : "bg-red-100 text-red-700",
               ].join(" ")}
             >
-              {row.status}
+              {isActive ? "Active" : "Inactive"}
             </span>
           );
         },
@@ -228,41 +353,89 @@ const LocationsBinsTab = () => {
       {
         key: "actions",
         title: "Actions",
-        render: () => (
-          <div className="flex items-center justify-end gap-2">
+        render: (row) => (
+          <div className="flex items-center justify-start gap-2">
             <button
               type="button"
               className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
               title="Edit"
-              onClick={() => {}}
+              onClick={() => handleEditBin(row)}
             >
               <Pencil className="h-4 w-4" />
             </button>
-            <button
+            {/* <button
               type="button"
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-              title="Lock / Block"
-              onClick={() => {}}
+              className={`rounded-md p-2 hover:bg-gray-100 ${row.is_active ? "text-yellow-600" : "text-green-600"}`}
+              title={row.is_active ? "Deactivate" : "Activate"}
+              onClick={() => handleToggleStatus(row)}
             >
               <Lock className="h-4 w-4" />
+            </button> */}
+            <button
+              type="button"
+              className={`rounded-md p-2 hover:bg-gray-100 ${deleteConfirm?.id === row.id ? "text-white bg-red-600" : "text-red-600"}`}
+              title={deleteConfirm?.id === row.id ? "Confirm Delete" : "Delete"}
+              onClick={() => handleDeleteBin(row)}
+            >
+              {deleteConfirm?.id === row.id ? (
+                <span className="text-xs font-medium">Confirm</span>
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
             </button>
           </div>
         ),
       },
     ],
-    [],
+    [warehouses, deleteConfirm],
   );
+
+  if (loading && locations.length === 0) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="text-gray-600">Loading locations...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+        <div className="text-red-800">{error}</div>
+        <button
+          onClick={fetchLocations}
+          className="mt-2 rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-end">
-        <button
-          type="button"
-          onClick={() => {}}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
-        >
-          + Add Bin
-        </button>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="text-sm text-gray-600">
+          Showing {filteredRows.length} of {locations.length} locations
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            title="Refresh"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+          <button
+            type="button"
+            onClick={handleAddBin}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+          >
+            + Add Location
+          </button>
+        </div>
       </div>
 
       <FilterBar
@@ -273,8 +446,57 @@ const LocationsBinsTab = () => {
       />
 
       <div className="rounded-lg border border-gray-200 bg-white p-2">
-        <CusTable columns={columns} data={filteredRows} />
+        {filteredRows.length > 0 ? (
+          <CusTable columns={columns} data={filteredRows} />
+        ) : (
+          <div className="py-8 text-center text-gray-600">
+            No locations found. Try adjusting your filters or add a new
+            location.
+          </div>
+        )}
       </div>
+
+      {showModal && (
+        <AddEditBinModal
+          isOpen={showModal}
+          onClose={handleModalClose}
+          location={selectedLocation}
+          isEditing={isEditing}
+          warehouses={warehouses}
+        />
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="rounded-lg bg-white p-6 shadow-lg">
+            <h3 className="mb-4 text-lg font-semibold">Confirm Delete</h3>
+            <p className="mb-6 text-gray-600">
+              Are you sure you want to delete location{" "}
+              <strong>{deleteConfirm.code}</strong>? This action cannot be
+              undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const location = locations.find(
+                    (l) => l.id === deleteConfirm.id,
+                  );
+                  if (location) handleDeleteBin(location);
+                }}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

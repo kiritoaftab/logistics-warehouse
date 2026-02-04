@@ -5,6 +5,8 @@ import Pagination from "../../components/Pagination";
 import { Pencil } from "lucide-react";
 import http from "../../../api/http";
 import AddSkuModal from "./modals/AddSkuModal";
+import { useAccess } from "../../utils/useAccess";
+import { getUserRole } from "../../utils/authStorage";
 
 const SKUsTab = () => {
   const [filtersState, setFiltersState] = useState({
@@ -30,6 +32,14 @@ const SKUsTab = () => {
   const [skuMode, setSkuMode] = useState("create"); // create | edit
   const [selectedClient, setSelectedClient] = useState(null);
   const [editingSku, setEditingSku] = useState(null);
+
+  const roleCode = getUserRole();
+  const isAdmin = roleCode === "ADMIN";
+  const access = useAccess("INVENTORY");
+  const canCreateSku = isAdmin || access.canCreate;
+  const canUpdateSku = isAdmin || access.canUpdate;
+  const canDeleteSku = isAdmin || access.canDelete;
+  const showActionsColumn = canUpdateSku || canDeleteSku;
 
   const onFilterChange = (key, val) =>
     setFiltersState((p) => ({ ...p, [key]: val }));
@@ -74,7 +84,6 @@ const SKUsTab = () => {
   useEffect(() => {
     fetchClients();
     fetchSkus(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const clientOptions = useMemo(() => {
@@ -268,13 +277,15 @@ const SKUsTab = () => {
   return (
     <div>
       <div className="mb-4 flex items-center justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
-        >
-          + Add SKU
-        </button>
+        {canCreateSku && (
+          <button
+            type="button"
+            onClick={openCreate}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+          >
+            + Add SKU
+          </button>
+        )}
       </div>
 
       <FilterBar

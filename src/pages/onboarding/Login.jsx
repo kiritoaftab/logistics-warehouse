@@ -4,9 +4,11 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { BASE_URL } from "../../constant";
+import { useAuth } from "../utils/AuthProvider";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { refreshPermissions } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,9 +41,14 @@ const Login = () => {
         // ✅ STORE IN SESSION STORAGE
         sessionStorage.setItem("auth_token", data.token);
         sessionStorage.setItem("user", JSON.stringify(data.user));
+        // ✅ hit permissions API right after login
+        const result = await refreshPermissions({ force: true });
 
+        if (!result.ok) {
+          toast.error(result.reason || "Could not load permissions");
+          return;
+        }
         toast.success(message || "Login successful");
-
         navigate("/dashboard");
       } else {
         toast.error(message || "Login failed");

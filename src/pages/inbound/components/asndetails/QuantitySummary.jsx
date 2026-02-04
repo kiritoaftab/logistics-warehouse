@@ -16,8 +16,8 @@ const BarRow = ({
 
       <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
         <div
-          className={`h-full ${colorClass}`}
-          style={{ width: `${percent}%` }}
+          className={`h-full ${colorClass} transition-all duration-300`}
+          style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
         />
       </div>
 
@@ -27,17 +27,17 @@ const BarRow = ({
 };
 
 const QuantitySummary = ({
-  expectedUnits,
-  receivedUnits,
-  damagedUnits,
-  shortageUnits,
-  expectedLines,
-  completionPercent,
+  expectedUnits = 0,
+  receivedUnits = 0,
+  damagedUnits = 0,
+  shortageUnits = 0,
+  expectedLines = 0,
+  completionPercent = 0,
 }) => {
   const safePct = (n) => Math.max(0, Math.min(100, n || 0));
-  const pctReceived = expectedUnits ? (receivedUnits / expectedUnits) * 100 : 0;
-  const pctDamaged = expectedUnits ? (damagedUnits / expectedUnits) * 100 : 0;
-  const pctShortage = expectedUnits ? (shortageUnits / expectedUnits) * 100 : 0;
+  const pctReceived = expectedUnits > 0 ? (receivedUnits / expectedUnits) * 100 : 0;
+  const pctDamaged = expectedUnits > 0 ? (damagedUnits / expectedUnits) * 100 : 0;
+  const pctShortage = expectedUnits > 0 ? (shortageUnits / expectedUnits) * 100 : 0;
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -48,28 +48,28 @@ const QuantitySummary = ({
       <div className="space-y-4">
         <BarRow
           label="Expected Units"
-          valueRight={expectedUnits?.toLocaleString?.() ?? expectedUnits}
+          valueRight={expectedUnits.toLocaleString()}
           percent={100}
           colorClass="bg-gray-300"
         />
 
         <BarRow
           label="Received"
-          valueRight={receivedUnits?.toLocaleString?.() ?? receivedUnits}
+          valueRight={receivedUnits.toLocaleString()}
           percent={safePct(pctReceived)}
           colorClass="bg-green-500"
         />
 
         <BarRow
           label="Damaged"
-          valueRight={damagedUnits?.toLocaleString?.() ?? damagedUnits}
+          valueRight={damagedUnits.toLocaleString()}
           percent={safePct(pctDamaged)}
           colorClass="bg-red-500"
         />
 
         <BarRow
           label="Shortage"
-          valueRight={shortageUnits?.toLocaleString?.() ?? shortageUnits}
+          valueRight={shortageUnits.toLocaleString()}
           percent={safePct(pctShortage)}
           colorClass="bg-orange-500"
         />

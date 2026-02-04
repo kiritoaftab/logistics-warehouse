@@ -2,16 +2,19 @@ import React, { useEffect, useMemo, useState } from "react";
 import http from "../../../../api/http";
 import { Modal, Field } from "../helper";
 import { useToast } from "../../../components/toast/ToastProvider";
+import PaginatedClientDropdown from "../../../components/paginations/PaginatedUserDropdown";
 
 const AddSkuModal = ({
   open,
-  mode = "create", // ✅ create | edit
-  client, // required for create (client_id)
-  sku, // ✅ required for edit
+  mode = "create", // create | edit
+  client, // create (client_id)
+  sku, // edit
   onClose,
   onCreated,
   onUpdated,
 }) => {
+  const toast = useToast();
+
   const initial = useMemo(
     () => ({
       sku_code: "",
@@ -35,12 +38,16 @@ const AddSkuModal = ({
     }),
     [],
   );
-  const toast = useToast();
+
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [errors, setErrors] = useState({});
 
+  // ✅ only needed when client prop is not available
+  const [selectedClientId, setSelectedClientId] = useState("");
+
+  // reset & hydrate form
   useEffect(() => {
     if (!open) return;
 
@@ -69,6 +76,7 @@ const AddSkuModal = ({
       setForm(initial);
     }
 
+    setSelectedClientId("");
     setErr("");
     setErrors({});
   }, [open, mode, sku, initial]);
@@ -77,15 +85,22 @@ const AddSkuModal = ({
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
+  const effectiveClientId = client?.id || selectedClientId;
+
   const validate = () => {
     const e = {};
-    if (mode === "create" && !client?.id) e.client = "Client is missing";
+
+    if (mode === "create" && !effectiveClientId) e.client = "Client is missing";
+
     if (!form.sku_code?.trim()) e.sku_code = "SKU code is required";
     if (!form.sku_name?.trim()) e.sku_name = "SKU name is required";
+
     if (form.unit_price !== "" && Number.isNaN(Number(form.unit_price)))
       e.unit_price = "Unit price must be a number";
+
     if (form.weight !== "" && Number.isNaN(Number(form.weight)))
       e.weight = "Weight must be a number";
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -98,8 +113,7 @@ const AddSkuModal = ({
       setSaving(true);
 
       const payload = {
-        // ✅ create needs client_id, edit usually doesn't need it (but safe if your API accepts)
-        ...(mode === "create" ? { client_id: client?.id } : {}),
+        ...(mode === "create" ? { client_id: Number(effectiveClientId) } : {}),
         ...form,
         dimensions_length:
           form.dimensions_length === ""
@@ -125,21 +139,27 @@ const AddSkuModal = ({
         await http.post("/skus", payload);
         onCreated?.();
       }
+
       toast.success(
         `SKU ${mode === "edit" ? "updated" : "created"} successfully`,
       );
       onClose?.();
+
+      // reset
       setForm(initial);
+      setSelectedClientId("");
       setErrors({});
       setErr("");
     } catch (e) {
       setErr(e?.response?.data?.message || "Failed to save SKU");
       toast.error("Failed to save SKU");
+
       const data = e?.response?.data;
-      if (Array.isArray(data.errors)) {
+      if (Array.isArray(data?.errors)) {
         const fieldErrors = {};
-        data.errors.forEach((err) => {
-          fieldErrors[err.field] = err.message;
+        data.errors.forEach((er) => {
+          toast.error(`Field error: ${er.message}`);
+          return (fieldErrors[er.field] = er.message);
         });
         setErrors(fieldErrors);
       }
@@ -170,11 +190,13 @@ const AddSkuModal = ({
           >
             Cancel
           </button>
+
           <button
             type="button"
             onClick={submit}
             disabled={saving}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white
+                       disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving
               ? "Saving..."
@@ -192,6 +214,26 @@ const AddSkuModal = ({
       )}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {mode === "create" && !client?.id && (
+          <div className="md:col-span-2 flex flex-col gap-1">
+            <span className="text-[11px] font-medium text-gray-500">
+              Select Client
+            </span>
+
+            <PaginatedClientDropdown
+              value={selectedClientId}
+              onChange={setSelectedClientId}
+              placeholder="Select client"
+              limit={10}
+              disabled={saving}
+            />
+
+            {errors.client && (
+              <p className="text-xs text-red-600 mt-1">{errors.client}</p>
+            )}
+          </div>
+        )}
+
         <Field
           label="SKU Code"
           required
@@ -215,7 +257,8 @@ const AddSkuModal = ({
           <textarea
             value={form.description}
             onChange={(e) => set("description", e.target.value)}
-            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-100"
             rows={3}
           />
         </div>
@@ -231,7 +274,8 @@ const AddSkuModal = ({
           <select
             value={form.uom}
             onChange={(e) => set("uom", e.target.value)}
-            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             <option value="EACH">EACH</option>
             <option value="BOX">BOX</option>
@@ -240,7 +284,6 @@ const AddSkuModal = ({
           </select>
         </div>
 
-        {/* ✅ Missing fields added */}
         <Field
           label="Length"
           type="number"
@@ -274,7 +317,8 @@ const AddSkuModal = ({
           <select
             value={form.pick_rule}
             onChange={(e) => set("pick_rule", e.target.value)}
-            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             <option value="FIFO">FIFO</option>
             <option value="LIFO">LIFO</option>
@@ -303,7 +347,8 @@ const AddSkuModal = ({
           <select
             value={form.currency}
             onChange={(e) => set("currency", e.target.value)}
-            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             <option value="INR">INR</option>
             <option value="USD">USD</option>
