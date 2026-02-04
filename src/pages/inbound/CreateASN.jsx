@@ -20,7 +20,7 @@ import BasicInformationSection from "./components/asnform/BasicInformationSectio
 import AttachmentsSection from "./components/asnform/AttachmentsSection";
 
 const CreateASN = () => {
-  const { id } = useParams(); // edit if exists
+  const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
@@ -52,7 +52,6 @@ const CreateASN = () => {
   const [attachSnap, setAttachSnap] = useState({ attachments: [], count: 0 });
   const onAttachmentsChange = useCallback((d) => setAttachSnap(d), []);
 
-  // init once
   if (!toastQueueRef.current) {
     toastQueueRef.current = createToastQueue(toast, {
       duration: 2600,
@@ -79,7 +78,6 @@ const CreateASN = () => {
     };
   }, [basicSnap, linesSnap, editAsn, mode, id]);
 
-  // ✅ ChecklistCard items
   const readiness = useMemo(() => {
     const warehouseOk = !!basicSnap?.warehouse_id;
     const clientOk = !!basicSnap?.client_id;
@@ -126,6 +124,7 @@ const CreateASN = () => {
         basicData,
         shipData,
         linesData,
+        attachData: attachSnap,
         action: "draft",
       });
 
@@ -143,6 +142,7 @@ const CreateASN = () => {
       await linesRef.current.saveLines({ asnId });
 
       toast.success("Draft saved");
+      navigate("/inbound");
     } catch (e) {
       logError("ASN Save Failed", e, { payload });
 
@@ -195,6 +195,7 @@ const CreateASN = () => {
         basicData,
         shipData,
         linesData,
+        attachData: attachSnap,
         action: "confirm",
       });
 
@@ -307,9 +308,9 @@ const CreateASN = () => {
           />
           <AsnLinesSection
             ref={linesRef}
-            asnId={numericAsnId} // ✅ best: numeric id only
+            asnId={numericAsnId}
             mode={mode}
-            clientId={basicSnap?.client_id} // ✅ NEW
+            clientId={basicSnap?.client_id}
             onChange={(data) => setLinesSnap(data)}
           />
 

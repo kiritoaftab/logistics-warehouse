@@ -18,14 +18,16 @@ const CusTable = ({ columns, data }) => {
         </thead>
 
         <tbody className="divide-y divide-gray-200 bg-white">
-          {data.map((row) => (
-            <tr key={row.id} className="hover:bg-gray-50">
+          {(data || []).map((row, idx) => (
+            <tr key={row?.id ?? idx} className="hover:bg-gray-50">
               {columns.map((col) => (
                 <td
                   key={col.key}
                   className="px-4 py-3 align-middle text-sm text-gray-700"
                 >
-                  {col.render ? col.render(row) : row[col.key]}
+                  {typeof col.render === "function"
+                    ? col.render(row, idx) // ✅ now supports index
+                    : row?.[col.key]}
                 </td>
               ))}
             </tr>

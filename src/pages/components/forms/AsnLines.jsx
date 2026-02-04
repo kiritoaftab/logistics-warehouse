@@ -11,7 +11,7 @@ const AsnLines = ({
   onOpenSku,
   clientId,
 }) => {
-  const totalUnits = lines.reduce((sum, l) => sum + (Number(l.qty) || 0), 0);
+  const totalUnits = lines.reduce((sum, l) => sum + (Number(l.qty) || ""), "");
 
   return (
     <FormCard
@@ -41,37 +41,6 @@ const AsnLines = ({
           <tbody>
             {lines.map((l, idx) => (
               <tr key={l.id ?? l._tempId ?? idx} className="border-b">
-                {/* ✅ SKU dropdown
-                <td className="py-2 pr-2">
-                  <PaginatedEntityDropdown
-                    endpoint="/skus"
-                    listKey="skus"
-                    value={l.sku_id}
-                    placeholder="Select SKU"
-                    disabled={!clientId}
-                    query={{ client_id: clientId }} // ✅ filter SKUs
-                    enableSearch // ✅ optional
-                    searchPlaceholder="Search SKU code/name…"
-                    onChange={(skuId, skuObj) => {
-                      // ✅ set sku_id + label + name + uom
-                      onUpdate(idx, {
-                        sku_id: skuId,
-                        sku: `${skuObj?.sku_code} (${skuObj?.sku_name})`,
-                        name: skuObj?.sku_name || "",
-                        uom: skuObj?.uom || l.uom || "EA",
-                      });
-                    }}
-                    renderItem={(s) => ({
-                      title: `${s.sku_code} (${s.sku_name})`,
-                      subtitle: `UOM: ${s.uom || "-"} • ${s.category || "-"}`,
-                    })}
-                  />
-                  {!clientId ? (
-                    <div className="text-xs text-gray-400 mt-1">
-                      Select Client first to load SKUs
-                    </div>
-                  ) : null}
-                </td> */}
                 <td className="py-2 pr-2">
                   <button
                     type="button"
@@ -81,7 +50,6 @@ const AsnLines = ({
                     {l.sku ? l.sku : "Select SKU"}
                   </button>
                 </td>
-                {/* UOM - readonly (auto-filled), keep editable if you want */}
                 <td className="py-2 pr-2 w-[120px]">
                   <input
                     className="w-full border rounded-md px-3 py-2 bg-gray-50"
@@ -96,9 +64,9 @@ const AsnLines = ({
                   <input
                     type="number"
                     className="w-full border rounded-md px-3 py-2 bg-gray-50"
-                    value={l.qty}
+                    value={l.qty || ""}
                     onChange={(e) => onUpdate(idx, { qty: e.target.value })}
-                    placeholder="0"
+                    placeholder="Quantity"
                   />
                 </td>
 

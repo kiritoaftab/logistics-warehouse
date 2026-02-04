@@ -15,13 +15,13 @@ const InboundASN = () => {
   const [selectedRows, setSelectedRows] = useState([]);
   const navigate = useNavigate();
   const toast = useToast();
-  
+
   const [asnData, setAsnData] = useState([]);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
     pages: 1,
-    limit: 20
+    limit: 20,
   });
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -29,7 +29,7 @@ const InboundASN = () => {
     dueToday: 0,
     inReceiving: 0,
     putawayPending: 0,
-    closed: 0
+    closed: 0,
   });
 
   // Filters state
@@ -56,7 +56,7 @@ const InboundASN = () => {
     try {
       setLoading(true);
       const response = await http.get(`/asns?page=${page}&limit=20`);
-      
+
       if (response.data.success) {
         setAsnData(response.data.data.asns);
         setPagination(response.data.data.pagination);
@@ -72,27 +72,27 @@ const InboundASN = () => {
 
   // Calculate statistics from ASN data
   const calculateStats = (asns) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     let dueTodayCount = 0;
     let inReceivingCount = 0;
     let putawayPendingCount = 0;
     let closedCount = 0;
 
-    asns.forEach(asn => {
-      const etaDate = new Date(asn.eta).toISOString().split('T')[0];
-      
+    asns.forEach((asn) => {
+      const etaDate = new Date(asn.eta).toISOString().split("T")[0];
+
       if (etaDate === today) {
         dueTodayCount++;
       }
 
-      switch(asn.status) {
-        case 'IN_RECEIVING':
+      switch (asn.status) {
+        case "IN_RECEIVING":
           inReceivingCount++;
           break;
-        case 'GRN_POSTED':
+        case "POSTED":
           putawayPendingCount++;
           break;
-        case 'CLOSED':
+        case "CLOSED":
           closedCount++;
           break;
       }
@@ -103,29 +103,29 @@ const InboundASN = () => {
       dueToday: dueTodayCount,
       inReceiving: inReceivingCount,
       putawayPending: putawayPendingCount,
-      closed: closedCount
+      closed: closedCount,
     });
   };
 
   // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return "-";
-    
+
     const date = new Date(dateString);
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     if (date.toDateString() === today.toDateString()) {
-      return `Today, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+      return `Today, ${date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
     } else if (date.toDateString() === tomorrow.toDateString()) {
-      return `Tomorrow, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+      return `Tomorrow, ${date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
     } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     }
   };
@@ -133,13 +133,13 @@ const InboundASN = () => {
   // Format status for display
   const formatStatus = (status) => {
     const statusMap = {
-      'DRAFT': 'Draft',
-      'CONFIRMED': 'Confirmed',
-      'IN_RECEIVING': 'In Receiving',
-      'GRN_POSTED': 'Putaway Pending',
-      'PUTAWAY_COMPLETED': 'Putaway Completed',
-      'CLOSED': 'Closed',
-      'CANCELLED': 'Cancelled'
+      DRAFT: "Draft",
+      CONFIRMED: "Confirmed",
+      IN_RECEIVING: "In Receiving",
+      GRN_POSTED: "Putaway Pending",
+      PUTAWAY_COMPLETED: "Putaway Completed",
+      CLOSED: "Closed",
+      CANCELLED: "Cancelled",
     };
     return statusMap[status] || status;
   };
@@ -147,15 +147,15 @@ const InboundASN = () => {
   // Get status badge color
   const getStatusBadgeColor = (status) => {
     const colorMap = {
-      'DRAFT': 'bg-gray-100 text-gray-800',
-      'CONFIRMED': 'bg-blue-100 text-blue-800',
-      'IN_RECEIVING': 'bg-yellow-100 text-yellow-800',
-      'GRN_POSTED': 'bg-purple-100 text-purple-800',
-      'PUTAWAY_COMPLETED': 'bg-green-100 text-green-800',
-      'CLOSED': 'bg-green-100 text-green-800',
-      'CANCELLED': 'bg-red-100 text-red-800'
+      DRAFT: "bg-gray-100 text-gray-800",
+      CONFIRMED: "bg-blue-100 text-blue-800",
+      IN_RECEIVING: "bg-yellow-100 text-yellow-800",
+      GRN_POSTED: "bg-purple-100 text-purple-800",
+      PUTAWAY_COMPLETED: "bg-green-100 text-green-800",
+      CLOSED: "bg-green-100 text-green-800",
+      CANCELLED: "bg-red-100 text-red-800",
     };
-    return colorMap[status] || 'bg-gray-100 text-gray-800';
+    return colorMap[status] || "bg-gray-100 text-gray-800";
   };
 
   const openDelete = (row) => {
@@ -166,13 +166,13 @@ const InboundASN = () => {
   const confirmDelete = async () => {
     try {
       setDeleting(true);
-      
+
       await http.delete(`/asns/${deleteTarget.id}`);
-      
+
       toast.success(`Deleted ${deleteTarget.asn_no} successfully`);
       setDeleteOpen(false);
       setDeleteTarget(null);
-      
+
       // Refresh data
       fetchASNData();
     } catch (e) {
@@ -197,35 +197,59 @@ const InboundASN = () => {
       type: "select",
       label: "WAREHOUSE",
       value: filterValues.warehouse,
-      options: ["All", ...Array.from(new Set(asnData.map(asn => asn.warehouse?.warehouse_name)))],
+      options: [
+        "All",
+        ...Array.from(
+          new Set(asnData.map((asn) => asn.warehouse?.warehouse_name)),
+        ),
+      ],
     },
     {
       key: "client",
       type: "select",
       label: "CLIENT",
       value: filterValues.client,
-      options: ["All", ...Array.from(new Set(asnData.map(asn => asn.client?.client_name)))],
+      options: [
+        "All",
+        ...Array.from(new Set(asnData.map((asn) => asn.client?.client_name))),
+      ],
     },
     {
       key: "status",
       type: "select",
       label: "STATUS",
       value: filterValues.status,
-      options: ["All", "Draft", "Confirmed", "In Receiving", "Putaway Pending", "Closed", "Cancelled"],
+      options: [
+        "All",
+        "Draft",
+        "Confirmed",
+        "In Receiving",
+        "Putaway Pending",
+        "Closed",
+        "Cancelled",
+      ],
     },
     {
       key: "supplier",
       type: "select",
       label: "SUPPLIER",
       value: filterValues.supplier,
-      options: ["All", ...Array.from(new Set(asnData.map(asn => asn.supplier?.supplier_name)))],
+      options: [
+        "All",
+        ...Array.from(
+          new Set(asnData.map((asn) => asn.supplier?.supplier_name)),
+        ),
+      ],
     },
     {
       key: "dock",
       type: "select",
       label: "DOCK",
       value: filterValues.dock,
-      options: ["All", ...Array.from(new Set(asnData.map(asn => asn.dock?.dock_name)))],
+      options: [
+        "All",
+        ...Array.from(new Set(asnData.map((asn) => asn.dock?.dock_name))),
+      ],
     },
     {
       key: "search",
@@ -239,11 +263,11 @@ const InboundASN = () => {
 
   // Apply filters to data
   const filteredData = useMemo(() => {
-    return asnData.filter(asn => {
+    return asnData.filter((asn) => {
       // Search filter
       if (filterValues.search) {
         const searchLower = filterValues.search.toLowerCase();
-        const matchesSearch = 
+        const matchesSearch =
           asn.asn_no.toLowerCase().includes(searchLower) ||
           asn.reference_no?.toLowerCase().includes(searchLower) ||
           asn.supplier?.supplier_name?.toLowerCase().includes(searchLower) ||
@@ -252,24 +276,30 @@ const InboundASN = () => {
       }
 
       // Warehouse filter
-      if (filterValues.warehouse !== "All" && asn.warehouse?.warehouse_name !== filterValues.warehouse) {
+      if (
+        filterValues.warehouse !== "All" &&
+        asn.warehouse?.warehouse_name !== filterValues.warehouse
+      ) {
         return false;
       }
 
       // Client filter
-      if (filterValues.client !== "All" && asn.client?.client_name !== filterValues.client) {
+      if (
+        filterValues.client !== "All" &&
+        asn.client?.client_name !== filterValues.client
+      ) {
         return false;
       }
 
       // Status filter
       if (filterValues.status !== "All") {
         const statusMap = {
-          'Draft': 'DRAFT',
-          'Confirmed': 'CONFIRMED',
-          'In Receiving': 'IN_RECEIVING',
-          'Putaway Pending': 'GRN_POSTED',
-          'Closed': 'CLOSED',
-          'Cancelled': 'CANCELLED'
+          Draft: "DRAFT",
+          Confirmed: "CONFIRMED",
+          "In Receiving": "IN_RECEIVING",
+          "Putaway Pending": "POSTED",
+          Closed: "CLOSED",
+          Cancelled: "CANCELLED",
         };
         if (asn.status !== statusMap[filterValues.status]) {
           return false;
@@ -277,12 +307,18 @@ const InboundASN = () => {
       }
 
       // Supplier filter
-      if (filterValues.supplier !== "All" && asn.supplier?.supplier_name !== filterValues.supplier) {
+      if (
+        filterValues.supplier !== "All" &&
+        asn.supplier?.supplier_name !== filterValues.supplier
+      ) {
         return false;
       }
 
       // Dock filter
-      if (filterValues.dock !== "All" && asn.dock?.dock_name !== filterValues.dock) {
+      if (
+        filterValues.dock !== "All" &&
+        asn.dock?.dock_name !== filterValues.dock
+      ) {
         return false;
       }
 
@@ -299,7 +335,9 @@ const InboundASN = () => {
           <input
             type="checkbox"
             onChange={(e) =>
-              setSelectedRows(e.target.checked ? filteredData.map((x) => x.id) : [])
+              setSelectedRows(
+                e.target.checked ? filteredData.map((x) => x.id) : [],
+              )
             }
           />
         ),
@@ -326,43 +364,45 @@ const InboundASN = () => {
           </button>
         ),
       },
-      { 
-        key: "client", 
+      {
+        key: "client",
         title: "Client",
-        render: (row) => row.client?.client_name || "-"
+        render: (row) => row.client?.client_name || "-",
       },
-      { 
-        key: "supplier", 
+      {
+        key: "supplier",
         title: "Supplier",
-        render: (row) => row.supplier?.supplier_name || "-"
+        render: (row) => row.supplier?.supplier_name || "-",
       },
-      { 
-        key: "eta", 
+      {
+        key: "eta",
         title: "ETA",
-        render: (row) => formatDate(row.eta)
+        render: (row) => formatDate(row.eta),
       },
-      { 
-        key: "dock", 
+      {
+        key: "dock",
         title: "Dock",
-        render: (row) => row.dock?.dock_name || "-"
+        render: (row) => row.dock?.dock_name || "-",
       },
-      { 
-        key: "total_lines", 
-        title: "Lines" 
+      {
+        key: "total_lines",
+        title: "Lines",
       },
-      { 
-        key: "total_expected_units", 
-        title: "Units" 
+      {
+        key: "total_expected_units",
+        title: "Units",
       },
-      { 
-        key: "total_received_units", 
-        title: "Rcvd" 
+      {
+        key: "total_received_units",
+        title: "Rcvd",
       },
       {
         key: "status",
         title: "Status",
         render: (row) => (
-          <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeColor(row.status)}`}>
+          <span
+            className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeColor(row.status)}`}
+          >
             {formatStatus(row.status)}
           </span>
         ),
@@ -371,14 +411,17 @@ const InboundASN = () => {
         key: "putaway",
         title: "Putaway",
         render: (row) => {
-          if (row.status === 'GRN_POSTED') {
+          if (row.status === "POSTED") {
             return row.total_received_units || "-";
-          } else if (row.status === 'PUTAWAY_COMPLETED' || row.status === 'CLOSED') {
+          } else if (
+            row.status === "PUTAWAY_COMPLETED" ||
+            row.status === "CLOSED"
+          ) {
             return "Completed";
           } else {
             return "-";
           }
-        }
+        },
       },
       {
         key: "actions",
@@ -393,8 +436,10 @@ const InboundASN = () => {
                     state: { asn: row },
                   });
                 } else if (row.status === "IN_RECEIVING") {
-                  navigate(`/ASNreceive/${row.asn_no}`, { state: { id: row.id } });
-                } else if (row.status === "GRN_POSTED") {
+                  navigate(`/ASNreceive/${row.asn_no}`, {
+                    state: { asnData: row },
+                  });
+                } else if (row.status === "POSTED") {
                   navigate(`/grn/${row.id}`);
                 } else {
                   navigate(`/ASNdetails/${row.id}`);
@@ -403,7 +448,7 @@ const InboundASN = () => {
             >
               {row.status === "IN_RECEIVING"
                 ? "Resume"
-                : row.status === "GRN_POSTED"
+                : row.status === "POSTED"
                   ? "View GRN"
                   : row.status === "DRAFT"
                     ? "Edit"
@@ -430,9 +475,9 @@ const InboundASN = () => {
   // Handle bulk actions
   const handleBulkConfirm = async () => {
     try {
-      await Promise.all(selectedRows.map(id => 
-        http.post(`/asns/${id}/confirm`)
-      ));
+      await Promise.all(
+        selectedRows.map((id) => http.post(`/asns/${id}/confirm`)),
+      );
       toast.success(`${selectedRows.length} ASNs confirmed successfully`);
       setSelectedRows([]);
       fetchASNData();
@@ -448,7 +493,7 @@ const InboundASN = () => {
         subtitle="Plan and track incoming shipments"
         actions={
           <>
-            <button 
+            <button
               onClick={() => toast.info("Export feature coming soon!")}
               className="px-4 py-2 border rounded-md text-sm bg-white w-full sm:w-auto"
             >
@@ -515,11 +560,7 @@ const InboundASN = () => {
           value={stats.putawayPending}
           accentColor="#8B5CF6"
         />
-        <StatCard
-          title="Closed"
-          value={stats.closed}
-          accentColor="#10B981"
-        />
+        <StatCard title="Closed" value={stats.closed} accentColor="#10B981" />
       </div>
 
       <div className="mt-6">
@@ -532,20 +573,24 @@ const InboundASN = () => {
                 <span className="text-sm text-blue-600 font-medium">
                   {selectedRows.length} Selected
                 </span>
-                <button 
+                <button
                   onClick={handleBulkConfirm}
                   className="text-sm text-blue-600 hover:underline"
                 >
                   Mark Confirmed
                 </button>
-                <button 
-                  onClick={() => toast.info("Bulk dock assignment coming soon!")}
+                <button
+                  onClick={() =>
+                    toast.info("Bulk dock assignment coming soon!")
+                  }
                   className="text-sm text-blue-600 hover:underline"
                 >
                   Assign Dock
                 </button>
-                <button 
-                  onClick={() => toast.info("Export selected feature coming soon!")}
+                <button
+                  onClick={() =>
+                    toast.info("Export selected feature coming soon!")
+                  }
                   className="text-sm text-blue-600 hover:underline"
                 >
                   Export Selected
@@ -572,14 +617,17 @@ const InboundASN = () => {
         ) : (
           <>
             <CusTable columns={columns} data={filteredData} />
-            
+
             {/* Pagination */}
             {pagination.pages > 1 && (
               <div className="flex justify-between items-center mt-4 px-4 py-3 border-t border-gray-200">
                 <div className="text-sm text-gray-700">
                   Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-                  {pagination.total} entries
+                  {Math.min(
+                    pagination.page * pagination.limit,
+                    pagination.total,
+                  )}{" "}
+                  of {pagination.total} entries
                 </div>
                 <div className="flex gap-2">
                   <button
