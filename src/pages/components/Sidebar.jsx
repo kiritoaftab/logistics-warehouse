@@ -67,7 +67,7 @@ const Sidebar = () => {
           {/* Logo */}
           <div className="h-16 flex items-center px-6 border-b">
             <h1 className="text-xl font-bold text-gray-900">
-              ORBIT <span className="text-primary">WMS</span>
+              Yash <span className="text-primary">WMS</span>
             </h1>
           </div>
 
