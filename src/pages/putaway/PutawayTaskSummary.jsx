@@ -31,7 +31,7 @@ const LinkText = ({ children }) => (
   </span>
 );
 
-const PutawayTaskSummary = ({ task }) => {
+const PutawayTaskSummary = ({ task, onSaveDraft, onBack }) => {
   return (
     <div className="border-b border-gray-200 bg-gray-50">
       <div className="mx-auto 2xl:max-w-[1900px] px-6 py-4">
@@ -51,19 +51,19 @@ const PutawayTaskSummary = ({ task }) => {
         {/* Title row */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-semibold text-gray-900">
-              Putaway Task Detail
-            </h1>
-            <StatusPill status={task.status} />
-          </div>
+  <button 
+    onClick={onSaveDraft}
+    className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
+  >
+    Save Draft
+  </button>
+  <button 
+    onClick={onBack}
+    className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
+  >
+    Back
+  </button>
 
-          <div className="flex items-center gap-3">
-            <button className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm">
-              Save Draft
-            </button>
-            <button className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm">
-              Back
-            </button>
           </div>
         </div>
 

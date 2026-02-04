@@ -60,15 +60,18 @@ const NewRoutes = [
       </RequireAuth>
     ),
   },
-
+  { path: "/dashboard", element: protect("/dashboard", <Dashboard />) },
   { path: "/", element: <Navigate to="/inventory" replace /> },
 
-  { path: "/dashboard", element: protect("/dashboard", <Dashboard />) },
-  { path: "/putaway", element: protect("/putaway", <Putaway />) },
-  {
-    path: "/putawaydetails",
-    element: protect("/putawaydetails", <PutawayDetails />),
-  },
+ {
+  path: "/putaway",
+  element: protect("/putaway", <Putaway />),
+},
+{
+  path: "/putawaydetails/:id", // Add :id parameter here
+  element: protect("/putawaydetails", <PutawayDetails />),
+},
+
 
   { path: "/inbound", element: protect("/inbound", <InboundASN />) },
   { path: "/createASN/:id", element: protect("/createASN/:id", <CreateASN />) },
