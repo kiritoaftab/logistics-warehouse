@@ -4,8 +4,7 @@ import CusTable from "../../components/CusTable";
 import { Pencil, Trash2, RefreshCw, Anchor, Eye, Plus } from "lucide-react";
 import http from "../../../api/http";
 import toast from "react-hot-toast";
-import { getUserRole } from "../../utils/authStorage";
-import { useAccess } from "../../utils/useAccess";
+import AddEditDockModal from "./modals/AddEditDockModal";
 
 const DockTab = () => {
   const [docks, setDocks] = useState([]);
@@ -82,7 +81,7 @@ const DockTab = () => {
     fetchWarehouses();
   }, [fetchDocks, fetchWarehouses]);
 
-  const dockTypes = ["INBOUND", "OUTBOUND", "MIXED"];
+  const dockTypes = ["Inbound", "Outbound", "Mixed"];
   const statusOptions = ["All Status", "Active", "Inactive"];
 
   // Warehouse options for filter
@@ -227,12 +226,13 @@ const DockTab = () => {
     fetchDocks(true);
   };
 
-  const handleModalClose = (refresh = false) => {
+  const handleModalClose = () => {
     setShowModal(false);
     setSelectedDock(null);
-    if (refresh) {
-      fetchDocks(true);
-    }
+  };
+
+  const handleModalSuccess = () => {
+    fetchDocks(true);
   };
 
   const filteredRows = useMemo(() => {
@@ -265,9 +265,9 @@ const DockTab = () => {
 
   const getDockTypeColor = (type) => {
     const typeColors = {
-      INBOUND: "bg-green-100 text-green-700",
-      OUTBOUND: "bg-blue-100 text-blue-700",
-      MIXED: "bg-purple-100 text-purple-700",
+      Inbound: "bg-green-100 text-green-700",
+      Outbound: "bg-blue-100 text-blue-700",
+      Mixed: "bg-purple-100 text-purple-700",
     };
     return typeColors[type] || "bg-gray-100 text-gray-700";
   };
@@ -410,308 +410,6 @@ const DockTab = () => {
     [deleteConfirm],
   );
 
-  // Add/Edit Dock Modal
-  const DockModal = () => {
-    const [formData, setFormData] = useState({
-      dock_name: "",
-      dock_code: "",
-      dock_type: "OUTBOUND",
-      warehouse_id: warehouses.length > 0 ? warehouses[0].id : "",
-      capacity: 5,
-      is_active: true,
-    });
-
-    const [modalLoading, setModalLoading] = useState(false);
-    const [modalError, setModalError] = useState("");
-
-    useEffect(() => {
-      if (selectedDock && isEditing) {
-        setFormData({
-          dock_name: selectedDock.dock_name,
-          dock_code: selectedDock.dock_code,
-          dock_type: selectedDock.dock_type,
-          warehouse_id: selectedDock.warehouse_id,
-          capacity: selectedDock.capacity,
-          is_active: selectedDock.is_active,
-        });
-      } else if (warehouses.length > 0) {
-        setFormData({
-          dock_name: "",
-          dock_code: "",
-          dock_type: "OUTBOUND",
-          warehouse_id: warehouses[0].id,
-          capacity: 5,
-          is_active: true,
-        });
-      }
-      setModalError("");
-    }, [selectedDock, isEditing, warehouses]);
-
-    const handleChange = (e) => {
-      const { name, value, type, checked } = e.target;
-      setFormData((prev) => ({
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      }));
-    };
-
-    const handleSubmit = async (e) => {
-      e.preventDefault();
-      setModalLoading(true);
-      setModalError("");
-
-      try {
-        let response;
-        const payload = {
-          ...formData,
-          warehouse_id: parseInt(formData.warehouse_id),
-          capacity: parseInt(formData.capacity),
-        };
-
-        if (isEditing && selectedDock) {
-          response = await http.put(`/docks/${selectedDock.id}`, payload);
-        } else {
-          response = await http.post("/docks", payload);
-        }
-
-        if (response.data.success) {
-          toast.success(
-            isEditing
-              ? "Dock updated successfully"
-              : "Dock created successfully",
-          );
-          handleModalClose(true);
-        } else {
-          throw new Error(response.data.message || "Operation failed");
-        }
-      } catch (err) {
-        console.error("Error saving dock:", err);
-        const errorMessage =
-          err.response?.data?.message ||
-          err.message ||
-          `Failed to ${isEditing ? "update" : "create"} dock. Please try again.`;
-        setModalError(errorMessage);
-        toast.error(errorMessage);
-      } finally {
-        setModalLoading(false);
-      }
-    };
-
-    if (!showModal) return null;
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="w-full max-w-2xl rounded-lg bg-white shadow-lg">
-          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-            <h2 className="text-lg font-semibold">
-              {isEditing ? "Edit Dock" : "Add New Dock"}
-            </h2>
-            <button
-              onClick={() => handleModalClose(false)}
-              className="rounded-md p-1 hover:bg-gray-100"
-              disabled={modalLoading}
-            >
-              <Anchor className="h-5 w-5" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            <div className="max-h-[70vh] overflow-y-auto p-6">
-              {modalError && (
-                <div className="mb-4 rounded-md bg-red-50 p-3">
-                  <p className="text-sm text-red-800">{modalError}</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Dock Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="dock_name"
-                    value={formData.dock_name}
-                    onChange={handleChange}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., Dock A"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Dock Code *
-                  </label>
-                  <input
-                    type="text"
-                    name="dock_code"
-                    value={formData.dock_code}
-                    onChange={handleChange}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., DOCK001"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Dock Type *
-                  </label>
-                  <select
-                    name="dock_type"
-                    value={formData.dock_type}
-                    onChange={handleChange}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                    required
-                  >
-                    {dockTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Warehouse *
-                  </label>
-                  <select
-                    name="warehouse_id"
-                    value={formData.warehouse_id}
-                    onChange={handleChange}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                    required
-                    disabled={warehousesLoading}
-                  >
-                    {warehouses.map((wh) => (
-                      <option key={wh.id} value={wh.id}>
-                        {wh.warehouse_name} ({wh.warehouse_code})
-                      </option>
-                    ))}
-                  </select>
-                  {warehousesLoading && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Loading warehouses...
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Capacity *
-                  </label>
-                  <input
-                    type="number"
-                    name="capacity"
-                    value={formData.capacity}
-                    onChange={handleChange}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., 5"
-                    min="1"
-                    max="20"
-                    required
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Maximum number of trucks
-                  </p>
-                </div>
-
-                <div className="flex items-center pt-8">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    name="is_active"
-                    checked={formData.is_active}
-                    onChange={handleChange}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <label
-                    htmlFor="is_active"
-                    className="ml-2 text-sm text-gray-700"
-                  >
-                    Active Dock
-                  </label>
-                </div>
-              </div>
-
-              <div className="mt-6 rounded-lg bg-gray-50 p-4">
-                <h3 className="mb-2 text-sm font-semibold text-gray-700">
-                  Quick Actions
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, dock_type: "INBOUND" }))
-                    }
-                    className="rounded-md bg-green-100 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-200"
-                  >
-                    Set as Inbound
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        dock_type: "OUTBOUND",
-                      }))
-                    }
-                    className="rounded-md bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200"
-                  >
-                    Set as Outbound
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        is_active: !prev.is_active,
-                      }))
-                    }
-                    className="rounded-md bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-                  >
-                    Toggle Status
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, capacity: 5 }))
-                    }
-                    className="rounded-md bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700 hover:bg-purple-200"
-                  >
-                    Default Capacity (5)
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200 px-6 py-4">
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleModalClose(false)}
-                  disabled={modalLoading}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={modalLoading}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {modalLoading ? "Saving..." : isEditing ? "Update" : "Create"}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
-
   if (loading && docks.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -736,8 +434,8 @@ const DockTab = () => {
 
   // Statistics
   const activeDocks = docks.filter((d) => d.is_active).length;
-  const inboundDocks = docks.filter((d) => d.dock_type === "INBOUND").length;
-  const outboundDocks = docks.filter((d) => d.dock_type === "OUTBOUND").length;
+  const inboundDocks = docks.filter((d) => d.dock_type === "Inbound").length;
+  const outboundDocks = docks.filter((d) => d.dock_type === "Outbound").length;
 
   return (
     <div>
@@ -751,8 +449,41 @@ const DockTab = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex gap-2">
+            <div className="rounded-lg bg-green-50 px-3 py-2">
+              <div className="text-xs text-green-700">Active Docks</div>
+              <div className="text-sm font-semibold text-green-900">
+                {activeDocks}
+              </div>
+            </div>
+            <div className="rounded-lg bg-blue-50 px-3 py-2">
+              <div className="text-xs text-blue-700">Total Docks</div>
+              <div className="text-sm font-semibold text-blue-900">
+                {docks.length}
+              </div>
+            </div>
+            <div className="rounded-lg bg-amber-50 px-3 py-2">
+              <div className="text-xs text-amber-700">Inbound/Outbound</div>
+              <div className="text-sm font-semibold text-amber-900">
+                {inboundDocks}/{outboundDocks}
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center gap-2">
-            {canCreate && (
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className={`flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 ${refreshing ? "opacity-50 cursor-not-allowed" : ""}`}
+              title="Refresh"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+              />
+              {refreshing ? "Refreshing..." : "Refresh"}
+            </button>
+            {canUpdate && (
               <button
                 type="button"
                 onClick={handleAddDock}
@@ -799,7 +530,16 @@ const DockTab = () => {
         )}
       </div>
 
-      <DockModal />
+      {/* Modal Component */}
+      <AddEditDockModal
+        isOpen={showModal}
+        onClose={handleModalClose}
+        selectedDock={selectedDock}
+        isEditing={isEditing}
+        warehouses={warehouses}
+        warehousesLoading={warehousesLoading}
+        onSuccess={handleModalSuccess}
+      />
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">

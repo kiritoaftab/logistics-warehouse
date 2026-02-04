@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import http from "../../../api/http";
 import Pagination from "../Pagination";
+import { createPortal } from "react-dom";
 
 const PaginatedClientDropdown = ({
   value,
@@ -22,15 +23,35 @@ const PaginatedClientDropdown = ({
 
   const wrapRef = useRef(null);
 
-  // close on outside click
+  const btnRef = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+
+  const calcPos = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({
+      top: r.bottom + 8, // 8px gap
+      left: r.left,
+      width: r.width,
+    });
+  };
+
   useEffect(() => {
-    const onDocClick = (e) => {
-      if (!wrapRef.current) return;
-      if (!wrapRef.current.contains(e.target)) setOpen(false);
+    if (!open) return;
+
+    calcPos();
+
+    const onScroll = () => calcPos();
+    const onResize = () => calcPos();
+
+    window.addEventListener("scroll", onScroll, true); // true catches nested scroll
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
     };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
+  }, [open]);
 
   const loadPage = async (page = 1) => {
     try {
@@ -83,53 +104,76 @@ const PaginatedClientDropdown = ({
         </span>
       </button>
 
-      {open && (
-        <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
-          {/* List */}
-          <div className="max-h-44 overflow-y-auto">
-            {loading ? (
-              <div className="px-3 py-3 text-sm text-gray-500">Loading…</div>
-            ) : clients.length === 0 ? (
-              <div className="px-3 py-3 text-sm text-gray-500">
-                No clients found
+      {open &&
+        createPortal(
+          <div
+            className="fixed z-[999999] rounded-md border border-gray-200 bg-white shadow-xl overflow-hidden"
+            style={{ top: pos.top, left: pos.left, width: pos.width }}
+          >
+            {/* optional search */}
+            {enableSearch ? (
+              <div className="p-2 border-b border-gray-100">
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-100"
+                />
               </div>
-            ) : (
-              clients.map((c) => {
-                const active = String(c.id) === String(value);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      onChange(String(c.id)); // ✅ return only id
-                      setOpen(false);
-                    }}
-                    className={[
-                      "w-full px-3 py-2 text-left hover:bg-gray-50",
-                      active ? "bg-blue-50" : "",
-                    ].join(" ")}
-                  >
-                    <div className="text-sm font-medium text-gray-900">
-                      {c.client_name}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {c.client_code} • {c.email || "-"}
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
+            ) : null}
 
-          {/* Pagination */}
-          <div className="border-t border-gray-200">
-            <Pagination
-              pagination={pagination}
-              onPageChange={(p) => loadPage(p)}
-            />
-          </div>
-        </div>
-      )}
+            <div className="max-h-96 overflow-y-auto">
+              {loading ? (
+                <div className="px-3 py-3 text-sm text-gray-500">Loading…</div>
+              ) : items.length === 0 ? (
+                <div className="px-3 py-3 text-sm text-gray-500">
+                  No records found
+                </div>
+              ) : (
+                items.map((it) => {
+                  const active = String(it.id) === String(value);
+                  const view = renderItem?.(it) || {
+                    title: String(it.id),
+                    subtitle: "",
+                  };
+
+                  return (
+                    <button
+                      key={it.id}
+                      type="button"
+                      onClick={() => {
+                        onChange(String(it.id), it);
+                        setOpen(false);
+                      }}
+                      className={[
+                        "w-full px-3 py-2 text-left hover:bg-gray-50",
+                        active ? "bg-blue-50" : "",
+                      ].join(" ")}
+                    >
+                      <div className="text-sm font-medium text-gray-900">
+                        {view.title}
+                      </div>
+                      {view.subtitle ? (
+                        <div className="text-xs text-gray-500">
+                          {view.subtitle}
+                        </div>
+                      ) : null}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="border-t border-gray-200">
+              <Pagination
+                pagination={pagination}
+                onPageChange={(p) => loadPage(p)}
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };

@@ -12,7 +12,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 const AsnReceiving = () => {
   const { asnNo } = useParams();
   const location = useLocation();
-  const { id } = location.state || {};
+  const { asnData } = location.state || {};
   const [attachments, setAttachments] = useState([]);
   const navigate = useNavigate();
   // right panel form
@@ -163,7 +163,7 @@ const AsnReceiving = () => {
     <FormPage
       breadcrumbs={[
         { label: "Inbound", to: "/inbound" },
-        { label: "ASN", to: `/ASNdetails/${id}` },
+        { label: "ASN", to: `/ASNdetails/${asnData?.id}` },
         { label: "Receiving" },
       ]}
       title="ASN Receiving"

@@ -1,8 +1,16 @@
 import React from "react";
 import FormCard from "./FormCard";
 import { Plus, Trash2 } from "lucide-react";
+import PaginatedEntityDropdown from "@/pages/inbound/components/asnform/common/PaginatedEntityDropdown";
 
-const AsnLines = ({ lines = [], onAdd, onUpdate, onRemove }) => {
+const AsnLines = ({
+  lines,
+  onAdd,
+  onUpdate,
+  onRemove,
+  onOpenSku,
+  clientId,
+}) => {
   const totalUnits = lines.reduce((sum, l) => sum + (Number(l.qty) || 0), 0);
 
   return (
@@ -18,45 +26,72 @@ const AsnLines = ({ lines = [], onAdd, onUpdate, onRemove }) => {
         </button>
       }
     >
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-visible">
         <table className="min-w-[800px] w-full text-sm">
           <thead>
             <tr className="text-xs text-gray-500 border-b">
               <th className="text-left py-2">SKU</th>
-              <th className="text-left py-2">Name</th>
               <th className="text-left py-2">UOM</th>
               <th className="text-left py-2">Exp. Qty</th>
               <th className="text-left py-2">Remarks</th>
               <th className="text-right py-2"> </th>
             </tr>
           </thead>
+
           <tbody>
             {lines.map((l, idx) => (
-              <tr key={l.id} className="border-b">
+              <tr key={l.id ?? l._tempId ?? idx} className="border-b">
+                {/* ✅ SKU dropdown
                 <td className="py-2 pr-2">
-                  <input
-                    className="w-full border rounded-md px-3 py-2 bg-gray-50"
-                    value={l.sku}
-                    onChange={(e) => onUpdate(idx, { sku: e.target.value })}
-                    placeholder="SKU-xxxxx"
+                  <PaginatedEntityDropdown
+                    endpoint="/skus"
+                    listKey="skus"
+                    value={l.sku_id}
+                    placeholder="Select SKU"
+                    disabled={!clientId}
+                    query={{ client_id: clientId }} // ✅ filter SKUs
+                    enableSearch // ✅ optional
+                    searchPlaceholder="Search SKU code/name…"
+                    onChange={(skuId, skuObj) => {
+                      // ✅ set sku_id + label + name + uom
+                      onUpdate(idx, {
+                        sku_id: skuId,
+                        sku: `${skuObj?.sku_code} (${skuObj?.sku_name})`,
+                        name: skuObj?.sku_name || "",
+                        uom: skuObj?.uom || l.uom || "EA",
+                      });
+                    }}
+                    renderItem={(s) => ({
+                      title: `${s.sku_code} (${s.sku_name})`,
+                      subtitle: `UOM: ${s.uom || "-"} • ${s.category || "-"}`,
+                    })}
                   />
-                </td>
+                  {!clientId ? (
+                    <div className="text-xs text-gray-400 mt-1">
+                      Select Client first to load SKUs
+                    </div>
+                  ) : null}
+                </td> */}
                 <td className="py-2 pr-2">
-                  <input
-                    className="w-full border rounded-md px-3 py-2 bg-gray-50"
-                    value={l.name}
-                    onChange={(e) => onUpdate(idx, { name: e.target.value })}
-                    placeholder="Item name"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => onOpenSku(idx)}
+                    className="w-full border rounded-md px-3 py-2 bg-white text-left"
+                  >
+                    {l.sku ? l.sku : "Select SKU"}
+                  </button>
                 </td>
+                {/* UOM - readonly (auto-filled), keep editable if you want */}
                 <td className="py-2 pr-2 w-[120px]">
                   <input
                     className="w-full border rounded-md px-3 py-2 bg-gray-50"
-                    value={l.uom}
+                    type="text"
+                    value={l.uom || ""}
                     onChange={(e) => onUpdate(idx, { uom: e.target.value })}
-                    placeholder="Pcs"
+                    placeholder="EA"
                   />
                 </td>
+
                 <td className="py-2 pr-2 w-[140px]">
                   <input
                     type="number"
@@ -66,6 +101,7 @@ const AsnLines = ({ lines = [], onAdd, onUpdate, onRemove }) => {
                     placeholder="0"
                   />
                 </td>
+
                 <td className="py-2 pr-2">
                   <input
                     className="w-full border rounded-md px-3 py-2 bg-gray-50"
@@ -73,16 +109,6 @@ const AsnLines = ({ lines = [], onAdd, onUpdate, onRemove }) => {
                     onChange={(e) => onUpdate(idx, { remarks: e.target.value })}
                     placeholder="..."
                   />
-                </td>
-                <td className="py-2 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onRemove(idx)}
-                    className="p-2 text-gray-400 hover:text-red-600"
-                    title="Remove"
-                  >
-                    <Trash2 size={16} />
-                  </button>
                 </td>
               </tr>
             ))}
