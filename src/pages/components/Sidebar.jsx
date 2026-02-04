@@ -72,7 +72,7 @@ const Sidebar = () => {
           {/* Logo */}
           <div className="h-16 flex items-center px-6 border-b">
             <h1 className="text-xl font-bold text-gray-900">
-              Yash <span className="text-primary">WMS</span>
+              Orbit <span className="text-primary">WMS</span>
             </h1>
           </div>
           <nav className="flex-1 overflow-y-auto p-3 space-y-1">
