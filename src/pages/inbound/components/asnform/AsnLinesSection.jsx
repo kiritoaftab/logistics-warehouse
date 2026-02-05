@@ -13,6 +13,7 @@ import { useToast } from "@/pages/components/toast/ToastProvider";
 
 import http from "@/api/http";
 import SkuPickerModal from "./common/SkuPickerModal";
+import { deleteAsnLine, updateAsnLine } from "../api/masters.api";
 
 const toUiLine = (apiLine) => ({
   id: apiLine?.id, // server line id
@@ -30,8 +31,6 @@ const AsnLinesSection = forwardRef(
     const toast = useToast();
 
     const [lines, setLines] = useState(() => {
-      // if initialAsn includes lines you can map here
-      // but your location.state ASN object currently doesn't include lines
       return [];
     });
     const [skuModal, setSkuModal] = useState({ open: false, idx: null });
@@ -40,8 +39,8 @@ const AsnLinesSection = forwardRef(
 
     // delete modal
     const [deleteOpen, setDeleteOpen] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState(null); // { idx, line }
-    const [deletedIds, setDeletedIds] = useState([]); // server ids to delete on save
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deletedIds, setDeletedIds] = useState([]);
 
     const onOpenSku = (idx) => setSkuModal({ open: true, idx });
 
@@ -160,28 +159,12 @@ const AsnLinesSection = forwardRef(
       return errs;
     };
 
-    // --- APIs inside section (sync only on save) ---
-    const createLineApi = async (payload) => {
-      const res = await http.post("/asn-lines", payload);
-      return res?.data?.data || res?.data;
-    };
-
-    const updateLineApi = async (id, payload) => {
-      const res = await http.put(`/asn-lines/${id}`, payload);
-      return res?.data?.data || res?.data;
-    };
-
-    const deleteLineApi = async (id) => {
-      const res = await http.delete(`/asn-lines/${id}`);
-      return res?.data?.data || res?.data;
-    };
-
     const saveLines = async ({ asnId: saveAsnId }) => {
       if (!saveAsnId) throw new Error("ASN ID missing for saving lines");
 
       // 1) delete removed lines
       for (const id of deletedIds) {
-        await deleteLineApi(id);
+        await deleteAsnLine(id);
       }
       setDeletedIds([]);
 
@@ -193,27 +176,27 @@ const AsnLinesSection = forwardRef(
 
         // create
         if (!l.id && (l._new || l._tempId)) {
-          const created = await createLineApi({
-            asn_id: Number(saveAsnId),
-            sku_id: Number(l.sku_id),
-            expected_qty: Number(l.expected_qty) || 0,
-            uom: l.uom || "EA",
-            remarks: l.remarks || "",
-          });
+          // const created = await createAsnLine({
+          //   asn_id: Number(saveAsnId),
+          //   sku_id: Number(l.sku_id),
+          //   expected_qty: Number(l.expected_qty) || 0,
+          //   uom: l.uom || "EA",
+          //   remarks: l.remarks || "",
+          // });
 
-          // after create, store new server id and reset flags
-          nextLines[i] = {
-            ...l,
-            id: created?.id || created?.data?.id || l.id,
-            _dirty: false,
-            _new: false,
-          };
+          // // after create, store new server id and reset flags
+          // nextLines[i] = {
+          //   ...l,
+          //   id: created?.id || created?.data?.id || l.id,
+          //   _dirty: false,
+          //   _new: false,
+          // };
           continue;
         }
 
         // update
         if (l.id && l._dirty) {
-          await updateLineApi(l.id, {
+          await updateAsnLine(l.id, {
             sku_id: Number(l.sku_id),
             expected_qty: Number(l.expected_qty) || 0,
             uom: l.uom || "EA",

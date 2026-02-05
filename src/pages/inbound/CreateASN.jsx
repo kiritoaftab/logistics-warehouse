@@ -256,7 +256,10 @@ const CreateASN = () => {
       title={mode === "edit" ? "Edit ASN" : "Create ASN"}
       topActions={
         <>
-          <button className="px-4 py-2 border rounded-md text-sm bg-white">
+          <button
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 border rounded-md text-sm bg-white"
+          >
             Cancel
           </button>
           <button
@@ -268,7 +271,11 @@ const CreateASN = () => {
         </>
       }
       bottomLeft={
-        <button className="px-4 py-2 border rounded-md text-sm bg-white">
+        // in mobile side i dont want to show this button
+        <button
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 hidden sm:block border rounded-md text-sm bg-white"
+        >
           Cancel
         </button>
       }

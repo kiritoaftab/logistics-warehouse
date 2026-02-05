@@ -11,7 +11,10 @@ const AsnLines = ({
   onOpenSku,
   clientId,
 }) => {
-  const totalUnits = lines.reduce((sum, l) => sum + (Number(l.qty) || ""), "");
+  const totalUnits = lines.reduce(
+    (sum, l) => Number(sum) + (Number(l.qty) || ""),
+    "",
+  );
 
   return (
     <FormCard

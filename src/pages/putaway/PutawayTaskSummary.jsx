@@ -1,4 +1,5 @@
 import React from "react";
+import { getStatusBadgeColor } from "../components/helper";
 
 const StatusPill = ({ status }) => {
   const isPending = status === "Pending";
@@ -16,10 +17,12 @@ const StatusPill = ({ status }) => {
   );
 };
 
-const KeyValue = ({ label, children }) => (
+const KeyValue = ({ label, children, className }) => (
   <div className="min-w-0">
     <div className="text-sm text-gray-500">{label}</div>
-    <div className="mt-1 truncate text-base font-semibold text-gray-900">
+    <div
+      className={`${className ? className : "text-gray-900"} rounded-md px-2  mt-1 truncate text-base font-semibold `}
+    >
       {children}
     </div>
   </div>
@@ -51,26 +54,31 @@ const PutawayTaskSummary = ({ task, onSaveDraft, onBack }) => {
         {/* Title row */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-  <button 
-    onClick={onSaveDraft}
-    className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
-  >
-    Save Draft
-  </button>
-  <button 
-    onClick={onBack}
-    className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
-  >
-    Back
-  </button>
-
+            <button
+              onClick={onSaveDraft}
+              className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
+            >
+              Save Draft
+            </button>
+            <button
+              onClick={onBack}
+              className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
+            >
+              Back
+            </button>
           </div>
         </div>
 
         {/* Big summary card */}
         <div className="mt-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-6">
-            <KeyValue label="Task ID / Status">{task.taskId}</KeyValue>
+            <KeyValue label="Task ID">{task.taskId}</KeyValue>
+            <KeyValue
+              className={`${getStatusBadgeColor(task?.putawayStatus)}`}
+              label="Status"
+            >
+              {task?.putawayStatus}
+            </KeyValue>
 
             <div className="min-w-0">
               <div className="text-sm text-gray-500">Ref Documents</div>

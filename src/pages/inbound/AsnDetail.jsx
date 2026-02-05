@@ -406,7 +406,7 @@ const AsnDetail = () => {
           // },
           {
             label: "Putaway Tasks →",
-            onClick: () => console.log("putaway tasks"),
+            onClick: () => navigate("/putaway"),
             disabled: !asnData.grn_posted_at,
           },
         ]}

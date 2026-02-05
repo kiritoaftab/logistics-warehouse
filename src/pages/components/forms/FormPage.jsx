@@ -41,7 +41,7 @@ const FormPage = ({
 
       {!hideFooter && (
         <div className="sticky bottom-0 bg-white border-t">
-          <div className="px-6 py-3 flex items-center justify-between gap-3">
+          <div className="sm:px-6 p-2 sm:py-3 sm:flex justify-between gap-3">
             <div className="flex gap-2">{bottomLeft}</div>
             <div className="flex gap-2">{bottomRight}</div>
           </div>

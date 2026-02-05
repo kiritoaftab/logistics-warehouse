@@ -245,12 +245,6 @@ const AsnReceiving = () => {
     const meta = shortageMeta[activeLine.asnLineId] || {};
     const hasShortage = shortageUnits > 0;
 
-    if (hasShortage && !meta.reason) {
-      toast.error("Shortage reason is required.");
-      console.warn("BLOCK: shortage reason missing");
-      return;
-    }
-
     const payload = {
       batch_no: batchNo || undefined,
       serial_no: serialNo || undefined,

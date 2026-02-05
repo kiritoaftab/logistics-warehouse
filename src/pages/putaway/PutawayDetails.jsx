@@ -11,20 +11,20 @@ const PutawayDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  
+
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [locations, setLocations] = useState([]);
-  
+
   // State for assign modal
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [assignForm, setAssignForm] = useState({
     user_id: "",
-    destination_location: ""
+    destination_location: "",
   });
   const [assigning, setAssigning] = useState(false);
-  
+
   // Other states
   const [scanSku, setScanSku] = useState("");
   const [goodQty, setGoodQty] = useState(0);
@@ -33,12 +33,16 @@ const PutawayDetails = () => {
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
 
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmData, setConfirmData] = useState(null);
+  // { pt_task_id, grn_no, qty, sku_name, destination_code }
+
   // Fetch task data, users, and locations
   useEffect(() => {
     fetchTaskData();
     fetchUsers();
     fetchLocations();
-    
+
     // Check if we need to open assign modal from state
     if (location.state?.openAssign) {
       setAssignModalOpen(true);
@@ -49,19 +53,19 @@ const PutawayDetails = () => {
     try {
       setLoading(true);
       const response = await http.get(`/grn-lines/${id}`);
-      
+
       if (response.data.success) {
         const taskData = response.data.data;
         setTask(taskData);
         setGoodQty(taskData.qty || 0);
         setScanSku(taskData.sku?.sku_code || "");
         setBin(taskData.destination_location?.location_code || "");
-        
+
         // Pre-fill assign form with existing data
         if (taskData) {
           setAssignForm({
             user_id: taskData.assigned_to || "",
-            destination_location: taskData.destination_location_id || ""
+            destination_location: taskData.destination_location_id || "",
           });
         }
       } else {
@@ -80,7 +84,7 @@ const PutawayDetails = () => {
   // Fetch users for assignment
   const fetchUsers = async () => {
     try {
-      const response = await http.get('/users?role=operator,supervisor');
+      const response = await http.get("/users?role=operator,supervisor");
       if (response.data.success) {
         setUsers(response.data.data.users || []);
       }
@@ -93,10 +97,10 @@ const PutawayDetails = () => {
   // Fetch locations for assignment
   const fetchLocations = async () => {
     try {
-      const response = await http.get('/locations?page=1&limit=100');
+      const response = await http.get("/locations?page=1&limit=100");
       if (response.data.success) {
         const filteredLocations = response.data.data.locations.filter(
-          loc => loc.is_putawayable === true && loc.is_active === true
+          (loc) => loc.is_putawayable === true && loc.is_active === true,
         );
         setLocations(filteredLocations);
       }
@@ -111,31 +115,34 @@ const PutawayDetails = () => {
     if (!task) return null;
 
     const statusMap = {
-      'PENDING': 'Pending',
-      'ASSIGNED': 'Assigned',
-      'IN_PROGRESS': 'In Progress',
-      'COMPLETED': 'Completed',
-      'CANCELLED': 'Cancelled'
+      PENDING: "Pending",
+      ASSIGNED: "Assigned",
+      IN_PROGRESS: "In Progress",
+      COMPLETED: "Completed",
+      CANCELLED: "Cancelled",
     };
 
     // Calculate capacity usage
     const capacity = task.destination_location?.capacity || 0;
     const currentUsage = task.destination_location?.current_usage || 0;
-    const capacityUsedPercent = capacity > 0 ? Math.round((currentUsage / capacity) * 100) : 0;
+    const capacityUsedPercent =
+      capacity > 0 ? Math.round((currentUsage / capacity) * 100) : 0;
     const remainingCapacity = Math.max(0, capacity - currentUsage);
 
     return {
       status: statusMap[task.putaway_status] || task.putaway_status,
       taskId: task.pt_task_id || "N/A",
-      grn: task.grn?.grn_no || `GRN-${String(task.grn_id).padStart(5, '0')}`,
-      asn: `ASN-${String(task.asn_line_id).padStart(5, '0')}`,
+      grn: task.grn?.grn_no || `GRN-${String(task.grn_id).padStart(5, "0")}`,
+      asn: `ASN-${String(task.asn_line_id).padStart(5, "0")}`,
       skuName: task.sku?.sku_name || "N/A",
       skuCode: task.sku?.sku_code || "N/A",
       qty: task.qty || 0,
       qtyLabel: `${task.qty || 0} ${task.sku?.uom || "EA"}`,
-      assignedTo: task.assignee ? `${task.assignee.first_name} ${task.assignee.last_name}`.trim() || task.assignee.username : "Not assigned",
+      assignedTo: task?.assignee?.username || "Not assigned",
       sourceLocation: task.source_location?.location_code || "N/A",
-      suggestedZone: task.destination_location?.zone ? `Zone ${task.destination_location.zone}` : "N/A",
+      suggestedZone: task.destination_location?.zone
+        ? `Zone ${task.destination_location.zone}`
+        : "N/A",
       suggestedBin: task.destination_location?.location_code || "N/A",
       createdAt: task.created_at ? formatDate(task.created_at) : "N/A",
       priority: "Normal",
@@ -148,7 +155,7 @@ const PutawayDetails = () => {
       putawayStatus: task.putaway_status,
       fragile: task.sku?.fragile || false,
       assignedToId: task.assigned_to,
-      destinationLocationId: task.destination_location_id
+      destinationLocationId: task.destination_location_id,
     };
   };
 
@@ -157,15 +164,15 @@ const PutawayDetails = () => {
     if (!dateString) return "";
     const date = new Date(dateString);
     const today = new Date();
-    
+
     if (date.toDateString() === today.toDateString()) {
-      return `Today, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+      return `Today, ${date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
     } else {
-      return date.toLocaleString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return date.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     }
   };
@@ -179,16 +186,16 @@ const PutawayDetails = () => {
 
     try {
       setAssigning(true);
-      
+
       const payload = {
         line_id: parseInt(id),
         user_id: parseInt(assignForm.user_id),
-        destination_location: parseInt(assignForm.destination_location)
+        destination_location: parseInt(assignForm.destination_location),
       };
 
       console.log("Assigning task with payload:", payload);
-      const response = await http.post('/grns/assign-putaway', payload);
-      
+      const response = await http.post("/grns/assign-putaway", payload);
+
       if (response.data.success) {
         toast.success("Putaway task assigned successfully!");
         setAssignModalOpen(false);
@@ -198,7 +205,9 @@ const PutawayDetails = () => {
       }
     } catch (error) {
       console.error("Error assigning task:", error);
-      toast.error(error.response?.data?.message || "Failed to assign putaway task");
+      toast.error(
+        error.response?.data?.message || "Failed to assign putaway task",
+      );
     } finally {
       setAssigning(false);
     }
@@ -209,7 +218,7 @@ const PutawayDetails = () => {
     if (task) {
       setAssignForm({
         user_id: task.assigned_to || "",
-        destination_location: task.destination_location_id || ""
+        destination_location: task.destination_location_id || "",
       });
       setAssignModalOpen(true);
     }
@@ -218,13 +227,15 @@ const PutawayDetails = () => {
   // Handle SKU scan
   const handleSKUScan = (scannedSKU) => {
     const currentSKU = task?.sku?.sku_code;
-    
+
     if (currentSKU && scannedSKU !== currentSKU) {
-      toast.error(`SKU mismatch! Expected: ${currentSKU}, Scanned: ${scannedSKU}`);
+      toast.error(
+        `SKU mismatch! Expected: ${currentSKU}, Scanned: ${scannedSKU}`,
+      );
       setScanSku("");
       return;
     }
-    
+
     setScanSku(scannedSKU);
     toast.success("SKU verified successfully!");
   };
@@ -233,7 +244,7 @@ const PutawayDetails = () => {
   const handleGoodQtyChange = (value) => {
     const numericValue = parseInt(value) || 0;
     const totalQty = task?.qty || 0;
-    
+
     if (numericValue > totalQty) {
       toast.error(`Good quantity cannot exceed ${totalQty}`);
       setGoodQty(totalQty);
@@ -245,7 +256,7 @@ const PutawayDetails = () => {
   const handleHoldQtyChange = (value) => {
     const numericValue = parseInt(value) || 0;
     const totalQty = task?.qty || 0;
-    
+
     if (numericValue > totalQty) {
       toast.error(`Damaged/Hold quantity cannot exceed ${totalQty}`);
       setHoldQty(totalQty);
@@ -266,18 +277,17 @@ const PutawayDetails = () => {
   const handleSaveDraft = async () => {
     try {
       setSaving(true);
-      
+
       const draftData = {
         scanSku,
         goodQty,
         holdQty,
         bin,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
-      
+
       localStorage.setItem(`putaway-draft-${id}`, JSON.stringify(draftData));
       toast.success("Draft saved successfully!");
-      
     } catch (error) {
       console.error("Error saving draft:", error);
       toast.error("Failed to save draft");
@@ -287,186 +297,323 @@ const PutawayDetails = () => {
   };
 
   // Complete task - FIXED VERSION
- const handleCompleteTask = async () => {
-  console.log("=== Starting complete task for Task ID:", id, "===");
-  
-  try {
-    // STEP 1: First fetch fresh task data
-    console.log("Fetching fresh task data...");
-    const freshTaskResponse = await http.get(`/grn-lines/${id}`);
-    
-    if (!freshTaskResponse.data.success) {
-      toast.error("Failed to fetch task data");
-      return;
-    }
-    
-    const freshTask = freshTaskResponse.data.data;
-    console.log("Fresh task data:", {
-      taskId: freshTask.id,
-      ptTaskId: freshTask.pt_task_id,
-      status: freshTask.putaway_status,
-      grnId: freshTask.grn_id,
-      grnStatus: freshTask.grn?.status
-    });
-    
-    // STEP 2: Check if this specific task is already completed
-    if (freshTask.putaway_status === 'COMPLETED') {
-      toast.error(`Task ${freshTask.pt_task_id} is already completed`);
-      setTask(freshTask); // Update local state
-      return;
-    }
-    
-    // STEP 3: Check if the GRN is already closed/completed
-    if (freshTask.grn?.status === 'CLOSED' || freshTask.grn?.status === 'COMPLETED') {
-      toast.error(`GRN ${freshTask.grn?.grn_no} is already closed. Cannot complete individual tasks.`);
-      setTask(freshTask);
-      return;
-    }
-    
-    // STEP 4: Validate task can be completed
-    if (freshTask.putaway_status === 'PENDING') {
-      toast.error("Task must be assigned before completion");
-      setTask(freshTask);
-      return;
-    }
+  // const handleCompleteTask = async () => {
+  //   console.log("=== Starting complete task for Task ID:", id, "===");
 
-    if (!freshTask.assigned_to) {
-      toast.error("Task must be assigned to a user");
-      setTask(freshTask);
-      return;
-    }
+  //   try {
+  //     // STEP 1: First fetch fresh task data
+  //     console.log("Fetching fresh task data...");
+  //     const freshTaskResponse = await http.get(`/grn-lines/${id}`);
 
-    if (!freshTask.destination_location_id) {
-      toast.error("Destination location must be assigned");
-      setTask(freshTask);
-      return;
-    }
+  //     if (!freshTaskResponse.data.success) {
+  //       toast.error("Failed to fetch task data");
+  //       return;
+  //     }
 
-    // STEP 5: Validate quantities
-    const remainingQty = calculateRemainingQty();
-    if (remainingQty > 0) {
-      toast.error(`Please allocate all ${freshTask.qty} units. Remaining: ${remainingQty}`);
-      return;
-    }
+  //     const freshTask = freshTaskResponse.data.data;
+  //     console.log(freshTask);
 
-    if (!scanSku || scanSku !== freshTask.sku?.sku_code) {
-      toast.error("Please scan and verify the SKU");
-      return;
-    }
+  //     if (freshTask.putaway_status === "COMPLETED") {
+  //       toast.error(`Task ${freshTask.pt_task_id} is already completed`);
+  //       setTask(freshTask);
+  //       return;
+  //     }
 
-    // STEP 6: Confirm with user
-    if (!window.confirm(`Complete putaway task ${freshTask.pt_task_id} (GRN: ${freshTask.grn?.grn_no})?`)) {
-      return;
-    }
+  //     if (
+  //       freshTask.grn?.status === "CLOSED" ||
+  //       freshTask.grn?.status === "COMPLETED"
+  //     ) {
+  //       toast.error(
+  //         `GRN ${freshTask.grn?.grn_no} is already closed. Cannot complete individual tasks.`,
+  //       );
+  //       setTask(freshTask);
+  //       return;
+  //     }
 
-    setCompleting(true);
-    
-    // STEP 7: Check GRN status separately before attempting completion
-    console.log("Checking GRN status...");
-    const grnCheckResponse = await http.get(`/grns/${freshTask.grn_id}`);
-    
-    if (grnCheckResponse.data.success) {
-      const grnData = grnCheckResponse.data.data;
-      console.log("GRN data:", grnData);
-      
-      if (grnData.status === 'CLOSED' || grnData.status === 'COMPLETED') {
-        toast.error(`GRN ${grnData.grn_no} is already ${grnData.status}. Cannot add more putaway tasks.`);
-        setCompleting(false);
+  //     if (freshTask.putaway_status === "PENDING") {
+  //       toast.error("Task must be assigned before completion");
+  //       setTask(freshTask);
+  //       return;
+  //     }
+
+  //     if (!freshTask.assigned_to) {
+  //       toast.error("Task must be assigned to a user");
+  //       setTask(freshTask);
+  //       return;
+  //     }
+
+  //     if (!freshTask.destination_location_id) {
+  //       toast.error("Destination location must be assigned");
+  //       setTask(freshTask);
+  //       return;
+  //     }
+
+  //     // STEP 5: Validate quantities
+  //     const remainingQty = calculateRemainingQty();
+  //     if (remainingQty > 0) {
+  //       toast.error(
+  //         `Please allocate all ${freshTask.qty} units. Remaining: ${remainingQty}`,
+  //       );
+  //       return;
+  //     }
+
+  //     if (!scanSku || scanSku !== freshTask.sku?.sku_code) {
+  //       toast.error("Please scan and verify the SKU");
+  //       return;
+  //     }
+
+  //     setConfirmData({
+  //       pt_task_id: freshTask.pt_task_id,
+  //       grn_no: freshTask.grn?.grn_no,
+  //       qty: freshTask.qty,
+  //       sku_name: freshTask.sku?.sku_name,
+  //       destination_code: freshTask.destination_location?.location_code,
+  //     });
+
+  //     setConfirmOpen(true);
+  //     return;
+
+  //     setCompleting(true);
+
+  //     // STEP 7: Check GRN status separately before attempting completion
+  //     console.log("Checking GRN status...");
+  //     const grnCheckResponse = await http.get(`/grns/${freshTask.grn_id}`);
+
+  //     if (grnCheckResponse.data.success) {
+  //       const grnData = grnCheckResponse.data.data;
+  //       if (grnData.status === "CLOSED" || grnData.status === "COMPLETED") {
+  //         toast.error(
+  //           `GRN ${grnData.grn_no} is already ${grnData.status}. Cannot add more putaway tasks.`,
+  //         );
+  //         setCompleting(false);
+  //         return;
+  //       }
+  //     }
+
+  //     // STEP 8: Prepare payload for THIS SPECIFIC TASK (ID 7)
+  //     const payload = {
+  //       line_id: parseInt(id), // This should be 7
+  //       good_qty: parseInt(goodQty),
+  //       damaged_qty: parseInt(holdQty),
+  //       destination_location: parseInt(freshTask.destination_location_id),
+  //       scanned_sku: scanSku,
+  //     };
+
+  //     // STEP 9: Make API call
+  //     const response = await http.post(
+  //       `/grns/${freshTask?.id}/complete-putaway`,
+  //     );
+
+  //     console.log("Completion response:", response.data);
+
+  //     if (response.data.success) {
+  //       toast.success(`Task ${freshTask.pt_task_id} completed successfully!`);
+
+  //       // Update local state
+  //       setTask((prev) => ({
+  //         ...prev,
+  //         putaway_status: "COMPLETED",
+  //         putaway_completed_at: new Date().toISOString(),
+  //       }));
+
+  //       //Inventory: 14 on hand, 14 available
+  //       if (response.data.data?.inventory) {
+  //         const inventory = response.data.data.inventory;
+  //         toast.info(
+  //           `Inventory: ${inventory.on_hand_qty} on hand, ${inventory.available_qty} available`,
+  //         );
+  //       }
+
+  //       // Navigate after delay
+  //       setTimeout(() => {
+  //         navigate("/putaway");
+  //       }, 2000);
+  //     } else {
+  //       toast.error(response.data.message || "Failed to complete task");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error completing task:", error);
+
+  //     // Handle specific error for GRN already completed
+  //     if (
+  //       error.response?.data?.message === "Putaway task already completed" ||
+  //       error.response?.data?.message?.includes("already completed")
+  //     ) {
+  //       // This means the GRN (GRN ID 5) is already completed
+  //       toast.error(
+  //         `GRN ${task?.grn?.grn_no} is already completed. All tasks under it are marked as completed.`,
+  //       );
+
+  //       // Force fetch the latest task data
+  //       try {
+  //         const latestTask = await http.get(`/grn-lines/${id}`);
+  //         if (latestTask.data.success) {
+  //           setTask(latestTask.data.data);
+  //         }
+  //       } catch (refreshError) {
+  //         console.error("Failed to refresh:", refreshError);
+  //       }
+  //     } else if (error.response?.data?.message) {
+  //       toast.error(error.response.data.message);
+  //     } else {
+  //       toast.error("Failed to complete task");
+  //     }
+  //   } finally {
+  //     setCompleting(false);
+  //   }
+  // };
+
+  const handleCompleteTask = async () => {
+    console.log("=== Starting complete task for Task ID:", id, "===");
+
+    try {
+      const freshTaskResponse = await http.get(`/grn-lines/${id}`);
+      if (!freshTaskResponse.data.success) {
+        toast.error("Failed to fetch task data");
         return;
       }
-    }
-    
-    // STEP 8: Prepare payload for THIS SPECIFIC TASK (ID 7)
-    const payload = {
-      line_id: parseInt(id), // This should be 7
-      good_qty: parseInt(goodQty),
-      damaged_qty: parseInt(holdQty),
-      destination_location: parseInt(freshTask.destination_location_id),
-      scanned_sku: scanSku
-    };
 
-    console.log("Sending completion for Task ID 7:", {
-      endpoint: `/grns/${freshTask.grn_id}/complete-putaway`,
-      payload: payload,
-      taskDetails: {
-        line_id: id,
-        expected: 7,
-        grn_id: freshTask.grn_id
-      }
-    });
+      const freshTask = freshTaskResponse.data.data;
 
-    // STEP 9: Make API call
-    const response = await http.post(`/grns/${freshTask.grn_id}/complete-putaway`, payload);
-    
-    console.log("Completion response:", response.data);
-    
-    if (response.data.success) {
-      toast.success(`Task ${freshTask.pt_task_id} completed successfully!`);
-      
-      // Update local state
-      setTask(prev => ({
-        ...prev,
-        putaway_status: 'COMPLETED',
-        putaway_completed_at: new Date().toISOString()
-      }));
-      
-      // Show inventory update
-      if (response.data.data?.inventory) {
-        const inventory = response.data.data.inventory;
-        toast.info(`Inventory: ${inventory.on_hand_qty} on hand, ${inventory.available_qty} available`);
+      if (freshTask.putaway_status === "COMPLETED") {
+        toast.error(`Task ${freshTask.pt_task_id} is already completed`);
+        setTask(freshTask);
+        return;
       }
-      
-      // Navigate after delay
-      setTimeout(() => {
-        navigate("/putaway");
-      }, 2000);
-      
-    } else {
-      toast.error(response.data.message || "Failed to complete task");
+
+      if (
+        freshTask.grn?.status === "CLOSED" ||
+        freshTask.grn?.status === "COMPLETED"
+      ) {
+        toast.error(
+          `GRN ${freshTask.grn?.grn_no} is already closed. Cannot complete individual tasks.`,
+        );
+        setTask(freshTask);
+        return;
+      }
+
+      if (freshTask.putaway_status === "PENDING") {
+        toast.error("Task must be assigned before completion");
+        setTask(freshTask);
+        return;
+      }
+
+      if (!freshTask.assigned_to) {
+        toast.error("Task must be assigned to a user");
+        setTask(freshTask);
+        return;
+      }
+
+      if (!freshTask.destination_location_id) {
+        toast.error("Destination location must be assigned");
+        setTask(freshTask);
+        return;
+      }
+
+      const remainingQty = calculateRemainingQty();
+      if (remainingQty > 0) {
+        toast.error(
+          `Please allocate all ${freshTask.qty} units. Remaining: ${remainingQty}`,
+        );
+        return;
+      }
+
+      if (!scanSku || scanSku !== freshTask.sku?.sku_code) {
+        toast.error("Please scan and verify the SKU");
+        return;
+      }
+
+      setConfirmData({
+        pt_task_id: freshTask.pt_task_id,
+        grn_no: freshTask.grn?.grn_no,
+        qty: freshTask.qty,
+        sku_name: freshTask.sku?.sku_name,
+        destination_code: freshTask.destination_location?.location_code,
+        grn_id: freshTask.grn_id,
+        destination_location_id: freshTask.destination_location_id,
+      });
+
+      setConfirmOpen(true);
+    } catch (error) {
+      console.error("Error validating completion:", error);
+      toast.error(error.response?.data?.message || "Failed to validate task");
     }
-    
-  } catch (error) {
-    console.error("Error completing task:", error);
-    
-    // Handle specific error for GRN already completed
-    if (error.response?.data?.message === "Putaway task already completed" || 
-        error.response?.data?.message?.includes("already completed")) {
-      
-      // This means the GRN (GRN ID 5) is already completed
-      toast.error(`GRN ${task?.grn?.grn_no} is already completed. All tasks under it are marked as completed.`);
-      
-      // Force fetch the latest task data
-      try {
-        const latestTask = await http.get(`/grn-lines/${id}`);
-        if (latestTask.data.success) {
-          setTask(latestTask.data.data);
+  };
+
+  const proceedCompleteTask = async () => {
+    if (!confirmData) return;
+
+    try {
+      setCompleting(true);
+
+      const grnCheckResponse = await http.get(`/grns/${confirmData.grn_id}`);
+      if (grnCheckResponse.data.success) {
+        const grnData = grnCheckResponse.data.data;
+        if (grnData.status === "CLOSED" || grnData.status === "COMPLETED") {
+          toast.error(
+            `GRN ${grnData.grn_no} is already ${grnData.status}. Cannot add more putaway tasks.`,
+          );
+          setConfirmOpen(false);
+          return;
         }
-      } catch (refreshError) {
-        console.error("Failed to refresh:", refreshError);
       }
-      
-    } else if (error.response?.data?.message) {
-      toast.error(error.response.data.message);
-    } else {
-      toast.error("Failed to complete task");
-    }
-  } finally {
-    setCompleting(false);
-  }
-};
 
-  // Start task (if assigned)
+      const payload = {
+        line_id: parseInt(id),
+        good_qty: parseInt(goodQty),
+        damaged_qty: parseInt(holdQty),
+        destination_location: parseInt(confirmData.destination_location_id),
+        scanned_sku: scanSku,
+      };
+
+      const response = await http.post(
+        `/grns/${parseInt(id)}/complete-putaway`,
+        payload,
+      );
+
+      if (response.data.success) {
+        toast.success(`Task ${confirmData.pt_task_id} completed successfully!`);
+
+        setTask((prev) => ({
+          ...prev,
+          putaway_status: "COMPLETED",
+          putaway_completed_at: new Date().toISOString(),
+        }));
+
+        if (response.data.data?.inventory) {
+          const inv = response.data.data.inventory;
+          toast.info(
+            `Inventory: ${inv.on_hand_qty} on hand, ${inv.available_qty} available`,
+          );
+        }
+
+        setConfirmOpen(false);
+        setConfirmData(null);
+
+        setTimeout(() => navigate("/putaway"), 1500);
+      } else {
+        toast.error(response.data.message || "Failed to complete task");
+      }
+    } catch (error) {
+      console.error("Error completing task:", error);
+      toast.error(error.response?.data?.message || "Failed to complete task");
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   const handleStartTask = async () => {
     try {
       console.log("Starting task with ID:", id);
-      
+
       // Update task status to IN_PROGRESS
       const payload = {
-        status: 'IN_PROGRESS'
+        status: "IN_PROGRESS",
       };
-      
-      const response = await http.put(`/grn-lines/${id}/status`, payload);
-      
+      // /grn-lines/start-putaway/12
+      // const response = await http.put(`/grn-lines/${id}/status`, payload);
+      const response = await http.post(`/grn-lines/start-putaway/${id}`);
+
       if (response.data.success) {
         toast.success("Putaway task started!");
         fetchTaskData(); // Refresh data
@@ -552,29 +699,30 @@ const PutawayDetails = () => {
   const remainingQty = calculateRemainingQty();
   const requiredQty = task.qty || 0;
   const allocatedQty = goodQty + holdQty;
-  const isTaskCompleted = task.putaway_status === 'COMPLETED';
-  const isTaskAssigned = task.putaway_status === 'ASSIGNED';
-  const isTaskInProgress = task.putaway_status === 'IN_PROGRESS';
-  const isTaskPending = task.putaway_status === 'PENDING';
-  
+  const isTaskCompleted = task.putaway_status === "COMPLETED";
+  const isTaskAssigned = task.putaway_status === "ASSIGNED";
+  const isTaskInProgress = task.putaway_status === "IN_PROGRESS";
+  const isTaskPending = task.putaway_status === "PENDING";
+
   // Check if task can be completed
-  const canCompleteTask = (isTaskAssigned || isTaskInProgress) && 
-                         remainingQty === 0 && 
-                         scanSku === task.sku?.sku_code &&
-                         task.destination_location_id;
+  const canCompleteTask =
+    (isTaskAssigned || isTaskInProgress) &&
+    remainingQty === 0 &&
+    scanSku === task.sku?.sku_code &&
+    task.destination_location_id;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {formattedTask && (
-        <PutawayTaskSummary 
-          task={formattedTask} 
+        <PutawayTaskSummary
+          task={formattedTask}
           onSaveDraft={handleSaveDraft}
           onBack={handleBack}
           onAssign={openAssignModal}
           isPending={isTaskPending}
         />
       )}
-      
+
       <div className="mx-auto 2xl:max-w-[1900px] px-6 py-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="space-y-6">
@@ -590,11 +738,7 @@ const PutawayDetails = () => {
           </div>
 
           <div className="space-y-6">
-            <PutawayRightPanel 
-              task={formattedTask} 
-              bin={bin}
-              setBin={setBin}
-            />
+            <PutawayRightPanel task={formattedTask} bin={bin} setBin={setBin} />
           </div>
         </div>
       </div>
@@ -605,7 +749,8 @@ const PutawayDetails = () => {
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                {task.putaway_status === 'PENDING' ? 'Assign' : 'Re-assign'} Putaway Task
+                {task.putaway_status === "PENDING" ? "Assign" : "Re-assign"}{" "}
+                Putaway Task
               </h3>
               <button
                 onClick={() => setAssignModalOpen(false)}
@@ -614,10 +759,12 @@ const PutawayDetails = () => {
                 ✕
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div>
-                <div className="text-sm font-medium text-gray-700 mb-2">Task Details</div>
+                <div className="text-sm font-medium text-gray-700 mb-2">
+                  Task Details
+                </div>
                 <div className="bg-gray-50 p-3 rounded-md">
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
@@ -630,11 +777,15 @@ const PutawayDetails = () => {
                     </div>
                     <div>
                       <span className="text-gray-500">Quantity:</span>
-                      <div className="font-medium">{task.qty} {task.sku?.uom}</div>
+                      <div className="font-medium">
+                        {task.qty} {task.sku?.uom}
+                      </div>
                     </div>
                     <div>
                       <span className="text-gray-500">Source:</span>
-                      <div className="font-medium">{task.source_location?.location_code}</div>
+                      <div className="font-medium">
+                        {task.source_location?.location_code}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -646,11 +797,13 @@ const PutawayDetails = () => {
                 </label>
                 <select
                   value={assignForm.user_id}
-                  onChange={(e) => setAssignForm({...assignForm, user_id: e.target.value})}
+                  onChange={(e) =>
+                    setAssignForm({ ...assignForm, user_id: e.target.value })
+                  }
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select User</option>
-                  {users.map(user => (
+                  {users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.first_name} {user.last_name} ({user.username})
                     </option>
@@ -664,11 +817,16 @@ const PutawayDetails = () => {
                 </label>
                 <select
                   value={assignForm.destination_location}
-                  onChange={(e) => setAssignForm({...assignForm, destination_location: e.target.value})}
+                  onChange={(e) =>
+                    setAssignForm({
+                      ...assignForm,
+                      destination_location: e.target.value,
+                    })
+                  }
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Location</option>
-                  {locations.map(location => (
+                  {locations.map((location) => (
                     <option key={location.id} value={location.id}>
                       {formatLocationOption(location)}
                     </option>
@@ -732,9 +890,11 @@ const PutawayDetails = () => {
               <div className="text-[11px] uppercase tracking-wide text-gray-500">
                 Remaining
               </div>
-              <div className={`mt-1 text-lg md:text-xl font-semibold ${
-                remainingQty === 0 ? 'text-green-600' : 'text-gray-400'
-              }`}>
+              <div
+                className={`mt-1 text-lg md:text-xl font-semibold ${
+                  remainingQty === 0 ? "text-green-600" : "text-gray-400"
+                }`}
+              >
                 {remainingQty}
               </div>
             </div>
@@ -772,20 +932,113 @@ const PutawayDetails = () => {
               onClick={handleCompleteTask}
               disabled={isTaskCompleted || completing || !canCompleteTask}
               className={`rounded-lg px-4 md:px-6 py-2 text-sm font-medium text-white shadow-sm ${
-                isTaskCompleted 
-                  ? 'bg-gray-400 cursor-not-allowed'
+                isTaskCompleted
+                  ? "bg-gray-400 cursor-not-allowed"
                   : canCompleteTask
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-gray-300 cursor-not-allowed'
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-gray-300 cursor-not-allowed"
               }`}
             >
-              {completing ? "Completing..." : 
-               isTaskCompleted ? "Task Completed" : 
-               "Complete Task"}
+              {completing
+                ? "Completing..."
+                : isTaskCompleted
+                  ? "Task Completed"
+                  : "Complete Task"}
             </button>
           </div>
         </div>
       </div>
+
+      {confirmOpen && confirmData && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Confirm Putaway Completion
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  This will mark the task as completed and update inventory.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setConfirmData(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-md bg-gray-50 p-4 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-gray-500">Task ID</div>
+                  <div className="font-semibold text-gray-900">
+                    {confirmData.pt_task_id}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-gray-500">GRN</div>
+                  <div className="font-semibold text-gray-900">
+                    {confirmData.grn_no || "N/A"}
+                  </div>
+                </div>
+
+                <div className="col-span-2">
+                  <div className="text-gray-500">SKU</div>
+                  <div className="font-semibold text-gray-900">
+                    {confirmData.sku_name || "N/A"}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-gray-500">Qty</div>
+                  <div className="font-semibold text-gray-900">
+                    {confirmData.qty ?? 0}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-gray-500">Destination</div>
+                  <div className="font-semibold text-gray-900">
+                    {confirmData.destination_code || "N/A"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick validation reminders */}
+              <div className="mt-3 text-xs text-gray-500">
+                Ensure SKU is scanned and quantities are fully allocated.
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setConfirmData(null);
+                }}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={proceedCompleteTask}
+                disabled={completing}
+                className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {completing ? "Completing..." : "Yes, Complete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
