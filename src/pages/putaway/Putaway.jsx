@@ -1,0 +1,779 @@
+import React, { useState, useEffect } from "react";
+import PageHeader from "../components/PageHeader";
+import FilterBar from "../components/FilterBar";
+import CusTable from "../components/CusTable";
+import { useNavigate } from "react-router-dom";
+import http from "../../api/http";
+import { useToast } from "../components/toast/ToastProvider";
+
+const Putaway = () => {
+  const navigate = useNavigate();
+  const toast = useToast();
+  
+  const [putawayData, setPutawayData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    inProgress: 0,
+    completed: 0,
+    aging: 0
+  });
+
+  // State for dynamic filter options
+  const [filterOptions, setFilterOptions] = useState({
+    warehouses: ["All"],
+    clients: ["All"],
+    statuses: ["All", "Pending", "Assigned", "In Progress", "Completed", "Cancelled"],
+    sources: ["All", "Dock", "Receiving Bin", "Quality Check"],
+    zones: ["All"]
+  });
+
+  // State for assign modal
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [assignForm, setAssignForm] = useState({
+    user_id: "",
+    destination_location: ""
+  });
+  const [assigning, setAssigning] = useState(false);
+
+  // Filter state
+  const [filterValues, setFilterValues] = useState({
+    dateRange: "Today",
+    warehouse: "All",
+    client: "All",
+    status: "All",
+    source: "All",
+    zone: "All",
+    search: "",
+  });
+
+  // Fetch putaway data and users
+  useEffect(() => {
+    fetchPutawayData();
+    fetchUsers();
+    fetchLocations();
+  }, []);
+
+  const fetchPutawayData = async () => {
+    try {
+      setLoading(true);
+      
+      const warehouseId = 1; // Default warehouse
+      const response = await http.get(`/grn-lines/?warehouse_id=${warehouseId}&page=1&limit=50`);
+      
+      if (response.data.success) {
+        setPutawayData(response.data.data);
+        calculateStats(response.data.data);
+        extractFilterOptions(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching putaway data:", error);
+      toast.error("Failed to load putaway tasks");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch users for assignment
+  const fetchUsers = async () => {
+    try {
+      const response = await http.get('/users?role=operator,supervisor');
+      if (response.data.success) {
+        setUsers(response.data.data.users || []);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.error("Failed to load users");
+    }
+  };
+
+  // Fetch locations for assignment
+  const fetchLocations = async () => {
+    try {
+      const response = await http.get('/locations?page=1&limit=100');
+      if (response.data.success) {
+        // Filter only active and putawayable locations
+        const filteredLocations = response.data.data.locations.filter(
+          location => location.is_putawayable === true && location.is_active === true
+        );
+        setLocations(filteredLocations);
+      }
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+      toast.error("Failed to load locations");
+    }
+  };
+
+  // Extract filter options from data
+  const extractFilterOptions = (data) => {
+    if (!data || data.length === 0) return;
+
+    // Extract unique zones from destination locations
+    const zones = ["All", ...new Set(data
+      .map(item => item.destination_location?.zone)
+      .filter(Boolean)
+      .map(zone => `Zone ${zone}`)
+    )];
+
+    // Extract unique clients
+    const clients = ["All", ...new Set(data
+      .map(item => item.sku?.client_name || "Unknown")
+      .filter(Boolean)
+    )];
+
+    setFilterOptions(prev => ({
+      ...prev,
+      zones,
+      clients: [...new Set([...prev.clients, ...clients])]
+    }));
+  };
+
+  // Calculate statistics from putaway data
+  const calculateStats = (data) => {
+    const now = new Date();
+    let pendingCount = 0;
+    let inProgressCount = 0;
+    let completedCount = 0;
+    let agingCount = 0;
+
+    data.forEach(task => {
+      const status = task.putaway_status?.toUpperCase();
+      
+      switch(status) {
+        case 'PENDING':
+          pendingCount++;
+          break;
+        case 'ASSIGNED':
+        case 'IN_PROGRESS':
+          inProgressCount++;
+          // Check if task is aging (> 4 hours)
+          const createdAt = new Date(task.created_at);
+          const hoursDiff = (now - createdAt) / (1000 * 60 * 60);
+          if (hoursDiff > 4) {
+            agingCount++;
+          }
+          break;
+        case 'COMPLETED':
+          completedCount++;
+          break;
+        default:
+          pendingCount++;
+      }
+    });
+
+    setStats({
+      total: data.length,
+      pending: pendingCount,
+      inProgress: inProgressCount,
+      completed: completedCount,
+      aging: agingCount
+    });
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  // Format putaway status for display
+  const formatPutawayStatus = (status) => {
+    const statusMap = {
+      'PENDING': 'Pending',
+      'ASSIGNED': 'Assigned',
+      'IN_PROGRESS': 'In Progress',
+      'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled'
+    };
+    return statusMap[status] || status || 'Pending';
+  };
+
+  // Get status badge color
+  const getStatusBadgeColor = (status) => {
+    const colorMap = {
+      'PENDING': 'bg-orange-100 text-orange-700',
+      'ASSIGNED': 'bg-blue-100 text-blue-700',
+      'IN_PROGRESS': 'bg-yellow-100 text-yellow-700',
+      'COMPLETED': 'bg-green-100 text-green-700',
+      'CANCELLED': 'bg-red-100 text-red-700'
+    };
+    return colorMap[status] || 'bg-gray-100 text-gray-700';
+  };
+
+  // Format destination location
+  const formatDestinationLocation = (location) => {
+    if (!location) return "-";
+    
+    const { zone, aisle, rack, level } = location;
+    if (zone && aisle && rack && level) {
+      return `${zone}-${aisle}-${rack}-${level}`;
+    } else if (location.location_code) {
+      return location.location_code;
+    }
+    return "-";
+  };
+
+  // Format assigned user name
+  const formatAssigneeName = (assignee) => {
+    if (!assignee) return "-";
+    return `${assignee.first_name} ${assignee.last_name}`.trim() || assignee.username || "-";
+  };
+
+  // Handle start/assign putaway task
+  const handleStartPutaway = (task) => {
+    const status = task.putaway_status?.toUpperCase();
+    
+    if (status === 'PENDING') {
+      setSelectedTask(task);
+      setAssignForm({
+        user_id: "",
+        destination_location: task.destination_location_id || ""
+      });
+      setAssignModalOpen(true);
+    } else if (status === 'ASSIGNED' || status === 'IN_PROGRESS' || status === 'COMPLETED') {
+      // Navigate to putaway details for all other statuses
+      navigate(`/putawaydetails/${task.id}`, { state: { task } });
+    }
+  };
+
+  // Handle assign task API call
+  const handleAssignTask = async () => {
+    if (!selectedTask) return;
+    
+    if (!assignForm.user_id || !assignForm.destination_location) {
+      toast.error("Please select a user and destination location");
+      return;
+    }
+
+    try {
+      setAssigning(true);
+      
+      const payload = {
+        line_id: selectedTask.id,
+        user_id: parseInt(assignForm.user_id),
+        destination_location: parseInt(assignForm.destination_location)
+      };
+
+      console.log("Assigning task with payload:", payload);
+      const response = await http.post('/grns/assign-putaway', payload);
+      
+      if (response.data.success) {
+        toast.success("Putaway task assigned successfully!");
+        setAssignModalOpen(false);
+        setSelectedTask(null);
+        fetchPutawayData(); // Refresh data
+      } else {
+        toast.error(response.data.message || "Failed to assign task");
+      }
+    } catch (error) {
+      console.error("Error assigning task:", error);
+      toast.error(error.response?.data?.message || "Failed to assign putaway task");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  // Handle view task details
+  const handleViewTask = (task) => {
+    navigate(`/putawaydetails/${task.id}`, { state: { task } });
+  };
+
+  // Bulk assign tasks
+  const handleBulkAssign = () => {
+    toast.info("Bulk assign feature coming soon!");
+  };
+
+  // Handle filter change
+  const handleFilterChange = (key, value) => {
+    setFilterValues(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Handle reset filters
+  const handleResetFilters = () => {
+    setFilterValues({
+      dateRange: "Today",
+      warehouse: "All",
+      client: "All",
+      status: "All",
+      source: "All",
+      zone: "All",
+      search: "",
+    });
+  };
+
+  // Filters configuration
+  const filters = [
+    {
+      key: "dateRange",
+      type: "select",
+      label: "Date Range",
+      value: filterValues.dateRange,
+      options: ["Today", "Yesterday", "Last 7 Days", "This Month", "All"],
+      className: "w-[140px]",
+    },
+    {
+      key: "warehouse",
+      type: "select",
+      label: "Warehouse",
+      value: filterValues.warehouse,
+      options: filterOptions.warehouses,
+      className: "w-[140px]",
+    },
+    {
+      key: "client",
+      type: "select",
+      label: "Client",
+      value: filterValues.client,
+      options: filterOptions.clients,
+      className: "w-[140px]",
+    },
+    {
+      key: "status",
+      type: "select",
+      label: "Status",
+      value: filterValues.status,
+      options: filterOptions.statuses,
+      className: "w-[140px]",
+    },
+    {
+      key: "source",
+      type: "select",
+      label: "Source",
+      value: filterValues.source,
+      options: filterOptions.sources,
+      className: "w-[140px]",
+    },
+    {
+      key: "zone",
+      type: "select",
+      label: "Zone",
+      value: filterValues.zone,
+      options: filterOptions.zones,
+      className: "w-[140px]",
+    },
+    {
+      key: "search",
+      type: "search",
+      label: "Search",
+      placeholder: "Task ID / ASN / GRN / SKU",
+      value: filterValues.search,
+      className: "w-[260px]",
+    },
+  ];
+
+  // Filter data based on filter values
+  const filteredData = putawayData.filter(task => {
+    // Search filter
+    if (filterValues.search) {
+      const searchLower = filterValues.search.toLowerCase();
+      const matchesSearch = 
+        task.pt_task_id?.toLowerCase().includes(searchLower) ||
+        task.sku?.sku_code?.toLowerCase().includes(searchLower) ||
+        task.sku?.sku_name?.toLowerCase().includes(searchLower) ||
+        task.batch_no?.toLowerCase().includes(searchLower) ||
+        task.grn?.grn_no?.toLowerCase().includes(searchLower);
+      
+      if (!matchesSearch) return false;
+    }
+
+    // Status filter
+    if (filterValues.status !== "All") {
+      const statusMap = {
+        'Pending': 'PENDING',
+        'Assigned': 'ASSIGNED',
+        'In Progress': 'IN_PROGRESS',
+        'Completed': 'COMPLETED',
+        'Cancelled': 'CANCELLED'
+      };
+      
+      if (task.putaway_status !== statusMap[filterValues.status]) {
+        return false;
+      }
+    }
+
+    // Zone filter
+    if (filterValues.zone !== "All") {
+      const zoneLetter = filterValues.zone.replace("Zone ", "").trim();
+      if (task.destination_location?.zone !== zoneLetter) {
+        return false;
+      }
+    }
+
+    // Source filter
+    if (filterValues.source !== "All") {
+      if (filterValues.source === "Dock") {
+        if (!task.source_location?.location_code?.includes("DOCK")) {
+          return false;
+        }
+      } else if (filterValues.source === "Receiving Bin") {
+        if (!task.source_location?.location_code?.includes("BIN")) {
+          return false;
+        }
+      } else if (filterValues.source === "Quality Check") {
+        if (!task.source_location?.location_code?.includes("QC")) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  });
+
+  // Format location for dropdown
+  const formatLocationOption = (location) => {
+    let displayText = location.location_code;
+    if (location.zone && location.aisle && location.rack && location.level) {
+      displayText += ` (${location.zone}-${location.aisle}-${location.rack}-${location.level})`;
+    }
+    if (location.available_capacity !== undefined) {
+      displayText += ` - Available: ${location.available_capacity}`;
+    }
+    return displayText;
+  };
+
+  // Table columns
+  const columns = [
+    {
+      key: "select",
+      title: "",
+      render: () => <input type="checkbox" className="h-4 w-4" />,
+    },
+    {
+      key: "taskId",
+      title: "Task ID",
+      render: (row) => (
+        <div className="leading-tight">
+          <div className="text-xs text-gray-400">PT</div>
+          <div className="text-sm font-semibold text-blue-600 cursor-pointer hover:underline"
+               onClick={() => handleViewTask(row)}>
+            {row.pt_task_id || "N/A"}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "grn",
+      title: "GRN No",
+      render: (row) => (
+        <div className="text-sm font-semibold">
+          {row.grn?.grn_no || `GRN-${String(row.grn_id).padStart(5, '0')}`}
+        </div>
+      ),
+    },
+    {
+      key: "sku",
+      title: "SKU Details",
+      render: (row) => (
+        <div className="leading-tight">
+          <div className="text-sm font-medium text-gray-900">
+            {row.sku?.sku_name || "N/A"}
+          </div>
+          <div className="text-xs text-gray-400">{row.sku?.sku_code || "N/A"}</div>
+          {row.batch_no && (
+            <div className="text-xs text-gray-500 mt-1">
+              Batch: {row.batch_no}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    { 
+      key: "qty", 
+      title: "Qty",
+      render: (row) => `${row.qty || 0} ${row.sku?.uom || "EA"}`
+    },
+    { 
+      key: "source", 
+      title: "Source",
+      render: (row) => row.source_location?.location_code || "N/A"
+    },
+    { 
+      key: "destLoc", 
+      title: "Dest. Loc",
+      render: (row) => formatDestinationLocation(row.destination_location)
+    },
+    {
+      key: "status",
+      title: "Status",
+      render: (row) => {
+        const status = row.putaway_status?.toUpperCase();
+        const displayStatus = formatPutawayStatus(status);
+        return (
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeColor(status)}`}>
+            {displayStatus}
+          </span>
+        );
+      },
+    },
+    { 
+      key: "assigned", 
+      title: "Assigned To",
+      render: (row) => formatAssigneeName(row.assignee)
+    },
+    { 
+      key: "created", 
+      title: "Created",
+      render: (row) => formatDate(row.created_at)
+    },
+    {
+      key: "action",
+      title: "Action",
+      render: (row) => {
+        const status = row.putaway_status?.toUpperCase();
+        const isPending = status === 'PENDING';
+        const isAssigned = status === 'ASSIGNED';
+        const isInProgress = status === 'IN_PROGRESS';
+        
+        if (isPending) {
+          return (
+            <button
+              onClick={() => handleStartPutaway(row)}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              Assign
+            </button>
+          );
+        } else if (isAssigned || isInProgress) {
+          return (
+            <button
+              onClick={() => handleStartPutaway(row)}
+              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
+            >
+              Start
+            </button>
+          );
+        } else {
+          return (
+            <button
+              onClick={() => handleViewTask(row)}
+              className="rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              View
+            </button>
+          );
+        }
+      },
+    },
+  ];
+
+  return (
+    <div className="min-h-screen p-6">
+      <PageHeader
+        title="Putaway Tasks"
+        subtitle="Move received stock from dock to storage locations"
+        actions={
+          <>
+            <button 
+              onClick={() => toast.info("Export feature coming soon!")}
+              className="rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Export
+            </button>
+            <button 
+              onClick={handleBulkAssign}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 transition-colors"
+            >
+              Assign Tasks
+            </button>
+          </>
+        }
+      />
+
+      <FilterBar 
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onReset={handleResetFilters}
+        onApply={() => console.log("Filters applied:", filterValues)}
+      />
+
+      {/* Status Cards */}
+      <div className="mb-4 grid grid-cols-5 gap-4">
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="text-xs text-gray-500">Total Tasks</div>
+          <div className="mt-2 text-2xl font-semibold text-gray-900">{stats.total}</div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="text-xs text-gray-500">Pending</div>
+          <div className="mt-2 text-2xl font-semibold text-gray-900">{stats.pending}</div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="text-xs text-gray-500">In Progress</div>
+          <div className="mt-2 text-2xl font-semibold text-blue-600">{stats.inProgress}</div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="text-xs text-gray-500">Completed</div>
+          <div className="mt-2 text-2xl font-semibold text-gray-900">{stats.completed}</div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="text-xs text-gray-500">Aging &gt; 4h</div>
+          <div className="mt-2 text-2xl font-semibold text-red-600">{stats.aging}</div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-lg border border-gray-200 bg-white">
+        {/* Table top selection bar */}
+        <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-3 text-sm text-gray-500">
+          <input type="checkbox" className="h-4 w-4" />
+          <span>0 Selected</span>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-500">Loading putaway tasks...</div>
+          </div>
+        ) : filteredData.length === 0 ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-500">No putaway tasks found</div>
+          </div>
+        ) : (
+          <CusTable columns={columns} data={filteredData} />
+        )}
+      </div>
+
+      {/* Assign Task Modal */}
+      {assignModalOpen && selectedTask && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Assign Putaway Task
+              </h3>
+              <button
+                onClick={() => setAssignModalOpen(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Task Details</div>
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-500">Task ID:</span>
+                      <div className="font-medium">{selectedTask.pt_task_id}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">SKU:</span>
+                      <div className="font-medium">{selectedTask.sku?.sku_name}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Quantity:</span>
+                      <div className="font-medium">{selectedTask.qty} {selectedTask.sku?.uom}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Source:</span>
+                      <div className="font-medium">{selectedTask.source_location?.location_code}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Assign To User *
+                </label>
+                <select
+                  value={assignForm.user_id}
+                  onChange={(e) => setAssignForm({...assignForm, user_id: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select User</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.first_name} {user.last_name} ({user.username})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Destination Location *
+                </label>
+                <select
+                  value={assignForm.destination_location}
+                  onChange={(e) => setAssignForm({...assignForm, destination_location: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select Location</option>
+                  {locations.map(location => (
+                    <option key={location.id} value={location.id}>
+                      {formatLocationOption(location)}
+                    </option>
+                  ))}
+                </select>
+                {selectedTask.sku?.putaway_zone && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Suggested Zone: {selectedTask.sku.putaway_zone}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => setAssignModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAssignTask}
+                  disabled={assigning || !assignForm.user_id || !assignForm.destination_location}
+                  className="px-4 py-2 bg-blue-600 rounded-md text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {assigning ? "Assigning..." : "Assign Task"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guidelines */}
+      <div className="mt-4 rounded-md border border-yellow-200 bg-yellow-50 p-4 text-sm text-gray-700">
+        <div className="font-semibold text-gray-900 mb-1">
+          Putaway Guidelines
+        </div>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Putaway quantity cannot exceed the received quantity.</li>
+          <li>
+            If the suggested location capacity is reached, you must flag the
+            task and request an alternate location.
+          </li>
+          <li>
+            Batch and Expiry details must be verified physically before
+            confirming the task.
+          </li>
+          <li>Scan the destination location barcode before confirming putaway.</li>
+          <li>Report any discrepancies immediately to your supervisor.</li>
+        </ul>
+      </div>
+
+      {/* Filter Summary */}
+      {!loading && (
+        <div className="mt-4 text-sm text-gray-500">
+          Showing {filteredData.length} of {putawayData.length} tasks
+          {filterValues.search && ` matching "${filterValues.search}"`}
+          {filterValues.status !== "All" && ` with status "${filterValues.status}"`}
+          {filterValues.zone !== "All" && ` in ${filterValues.zone}`}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Putaway;
