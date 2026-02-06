@@ -24,9 +24,7 @@ const Header = () => {
 
   // Function to get user's primary role
   const getUserRole = () => {
-    if (!userSession || !userSession.roles || userSession.roles.length === 0)
-      return "User";
-    return userSession.roles[0].role_name || "User";
+    return userSession.roles[0].role_name || "";
   };
 
   // Check if profile image exists (for future backend implementation)
