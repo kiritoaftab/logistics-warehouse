@@ -6,6 +6,10 @@ const Header = () => {
   const { userSession } = useAuth();
   const navigate = useNavigate();
 
+  if (!userSession) {
+    return <></>;
+  }
+
   // Function to get user avatar initials
   const getUserInitials = () => {
     if (!userSession) return "U";
