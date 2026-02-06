@@ -6,7 +6,6 @@ import InboundASN from "../inbound/InboundASN";
 import AsnDetail from "../inbound/AsnDetail";
 import AsnReceiving from "../inbound/AsnReceiving";
 import Inventory from "../inventory/Inventory";
-import InventoryStockBySKU from "../inventory/InventoryStockBySKU";
 import { useRoutes, Navigate } from "react-router-dom";
 import Picking from "../picking/Picking";
 import PickWaves from "../picking/PickWaves";
@@ -34,6 +33,7 @@ import Setting from "../onboarding/Setting";
 import { RequirePermission, RequireAuth } from "../utils/auth/RequireAuth";
 import { ROUTE_PERMS } from "./routePerms";
 import Unauthorized from "../unauthorized/Unauthorized";
+import StockBySkuTab from "../inventory/components/tabs/stockBySku/StockBySkuTab";
 
 const protect = (path, element) => {
   const rule = ROUTE_PERMS[path];
@@ -63,15 +63,14 @@ const NewRoutes = [
   { path: "/dashboard", element: protect("/dashboard", <Dashboard />) },
   { path: "/", element: <Navigate to="/inventory" replace /> },
 
- {
-  path: "/putaway",
-  element: protect("/putaway", <Putaway />),
-},
-{
-  path: "/putawaydetails/:id", // Add :id parameter here
-  element: protect("/putawaydetails", <PutawayDetails />),
-},
-
+  {
+    path: "/putaway",
+    element: protect("/putaway", <Putaway />),
+  },
+  {
+    path: "/putawaydetails/:id", // Add :id parameter here
+    element: protect("/putawaydetails", <PutawayDetails />),
+  },
 
   { path: "/inbound", element: protect("/inbound", <InboundASN />) },
   { path: "/createASN/:id", element: protect("/createASN/:id", <CreateASN />) },
@@ -127,7 +126,7 @@ const NewRoutes = [
   {
     path: "/inventory",
     element: protect("/inventory", <Inventory />),
-    children: [{ index: true, element: <InventoryStockBySKU /> }],
+    children: [{ index: true, element: <StockBySkuTab /> }],
   },
 
   { path: "/picking", element: protect("/picking", <Picking />) },

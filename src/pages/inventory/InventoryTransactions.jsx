@@ -202,5 +202,5 @@
 
 // export default InventoryTransactions;
 
-import TransactionsTab from "./components/tabs/transactions/TransactionsTab";
-export default TransactionsTab;
+// import TransactionsTab from "./components/tabs/transactions/TransactionsTab";
+// export default TransactionsTab;

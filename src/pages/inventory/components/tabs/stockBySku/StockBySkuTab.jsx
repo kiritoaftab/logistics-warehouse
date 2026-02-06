@@ -5,6 +5,7 @@ import { useToast } from "@/pages/components/toast/ToastProvider";
 import SummaryCards from "../../SummaryCards";
 import StatusPill from "../../StatusPill";
 import { useStockBySku } from "./useStockBySku";
+import Pagination from "../../../../components/Pagination";
 
 export default function StockBySkuTab() {
   const toast = useToast();
@@ -18,6 +19,9 @@ export default function StockBySkuTab() {
     summary,
     tableData,
     refresh,
+    pagination,
+    page,
+    setPage,
   } = useStockBySku(toast);
 
   const columns = useMemo(
@@ -203,6 +207,16 @@ export default function StockBySkuTab() {
 
           <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
             <CusTable columns={columns} data={tableData} />
+            <Pagination
+              pagination={{
+                ...(pagination || {}),
+                page: page || pagination?.page || 1,
+              }}
+              onPageChange={(p) => {
+                if (p < 1 || p > (pagination?.pages || 1)) return;
+                setPage(p);
+              }}
+            />
           </div>
 
           <div className="text-xs text-gray-400 text-center">

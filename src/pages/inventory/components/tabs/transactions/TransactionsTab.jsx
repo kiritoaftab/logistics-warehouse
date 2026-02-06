@@ -3,6 +3,11 @@ import FilterBar from "@/pages/components/FilterBar";
 import CusTable from "@/pages/components/CusTable";
 import { useToast } from "@/pages/components/toast/ToastProvider";
 import { useTransactions } from "./useTransactions";
+import Pagination from "../../../../components/Pagination";
+import {
+  getStatusBadgeColor,
+  getTransactionTypeColor,
+} from "../../../../components/helper";
 
 export default function TransactionsTab() {
   const toast = useToast();
@@ -13,65 +18,139 @@ export default function TransactionsTab() {
     () => [
       {
         key: "transaction_id",
-        title: "Txn ID",
+        title: "Transaction ID",
         render: (r) => (
-          <div className="text-sm font-semibold">{r.transaction_id}</div>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-gray-900">
+              #{r.transaction_id}
+            </span>
+            <span className="text-xs text-gray-500 mt-0.5">
+              {new Date(r.created_at).toLocaleDateString()}
+            </span>
+          </div>
         ),
       },
       {
         key: "transaction_type",
         title: "Type",
-        render: (r) => <div className="text-sm">{r.transaction_type}</div>,
+        render: (r) => (
+          <span
+            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(
+              r.transaction_type,
+            )}`}
+          >
+            {r.transaction_type}
+          </span>
+        ),
       },
       {
         key: "sku",
-        title: "SKU",
+        title: "Product",
         render: (r) => (
-          <div className="text-sm">
-            {r.sku?.sku_code}{" "}
-            <span className="text-xs text-gray-500">({r.sku?.sku_name})</span>
+          <div className="flex flex-col max-w-xs">
+            <span className="text-sm font-medium text-gray-900">
+              {r.sku?.sku_code}
+            </span>
+            <span className="text-xs text-gray-500 truncate">
+              {r.sku?.sku_name}
+            </span>
           </div>
         ),
       },
       {
         key: "qty",
-        title: "Qty",
-        render: (r) => <div className="text-sm font-semibold">{r.qty}</div>,
-      },
-      {
-        key: "from_location",
-        title: "From",
+        title: "Quantity",
         render: (r) => (
-          <div className="text-sm">{r.from_location?.location_code || "-"}</div>
+          <div className="flex items-center">
+            <span className="inline-flex items-center justify-center min-w-[3rem] px-3 py-1 rounded-md bg-gray-50 text-sm font-semibold text-gray-900 border border-gray-200">
+              {r.qty}
+            </span>
+          </div>
         ),
       },
       {
-        key: "to_location",
-        title: "To",
+        key: "locations",
+        title: "Movement",
         render: (r) => (
-          <div className="text-sm">{r.to_location?.location_code || "-"}</div>
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col items-end">
+              <span className="text-xs text-gray-500">From</span>
+              <span className="text-sm font-medium text-gray-900">
+                {r.from_location?.location_code || (
+                  <span className="text-gray-400">—</span>
+                )}
+              </span>
+            </div>
+            <svg
+              className="w-4 h-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 7l5 5m0 0l-5 5m5-5H6"
+              />
+            </svg>
+            <div className="flex flex-col items-start">
+              <span className="text-xs text-gray-500">To</span>
+              <span className="text-sm font-medium text-gray-900">
+                {r.to_location?.location_code || (
+                  <span className="text-gray-400">—</span>
+                )}
+              </span>
+            </div>
+          </div>
         ),
       },
       {
         key: "batch_no",
         title: "Batch",
-        render: (r) => <div className="text-sm">{r.batch_no || "-"}</div>,
+        render: (r) => (
+          <div className="text-sm text-gray-900">
+            {r.batch_no ? (
+              <span className="inline-flex items-center px-2 py-1 rounded bg-purple-50 text-purple-700 border border-purple-200 font-mono text-xs">
+                {r.batch_no}
+              </span>
+            ) : (
+              <span className="text-gray-400">—</span>
+            )}
+          </div>
+        ),
       },
       {
         key: "reference",
         title: "Reference",
         render: (r) => (
-          <div className="text-xs text-gray-600">
-            {r.reference_type} • {r.reference_id}
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-gray-700">
+              {r.reference_type}
+            </span>
+            <span className="text-xs text-gray-500 font-mono">
+              {r.reference_id}
+            </span>
           </div>
         ),
       },
       {
-        key: "created_at",
-        title: "Date",
+        key: "timestamp",
+        title: "Time",
         render: (r) => (
-          <div className="text-xs text-gray-600">
-            {new Date(r.created_at).toLocaleString()}
+          <div className="flex flex-col items-end">
+            <span className="text-xs text-gray-900">
+              {new Date(r.created_at).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+            <span className="text-xs text-gray-500">
+              {new Date(r.created_at).toLocaleDateString([], {
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
           </div>
         ),
       },
@@ -115,28 +194,11 @@ export default function TransactionsTab() {
             <CusTable columns={columns} data={data} />
           </div>
 
-          <div className="flex items-center justify-end gap-2">
-            <button
-              disabled={pagination.page <= 1}
-              onClick={() =>
-                setF((s) => ({ ...s, page: Math.max(1, s.page - 1) }))
-              }
-              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-            >
-              Prev
-            </button>
-            <button
-              disabled={pagination.page >= pagination.pages}
-              onClick={() =>
-                setF((s) => ({
-                  ...s,
-                  page: Math.min(pagination.pages, s.page + 1),
-                }))
-              }
-              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm disabled:opacity-50"
-            >
-              Next
-            </button>
+          <div className="rounded-b-lg border border-t-0 border-gray-200 bg-white">
+            <Pagination
+              pagination={pagination}
+              onPageChange={(p) => setF((s) => ({ ...s, page: p }))}
+            />
           </div>
         </>
       )}

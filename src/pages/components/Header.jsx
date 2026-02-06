@@ -1,15 +1,18 @@
 import { Bell, Search } from "lucide-react";
 import { useAuth } from "../utils/AuthProvider";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
   const { userSession } = useAuth();
+  const navigate = useNavigate();
 
   // Function to get user avatar initials
   const getUserInitials = () => {
     if (!userSession) return "U";
     const firstName = userSession.first_name || "";
     const lastName = userSession.last_name || "";
-    const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    const initials =
+      `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
     return initials || userSession.username?.charAt(0).toUpperCase() || "U";
   };
 
@@ -21,17 +24,20 @@ const Header = () => {
 
   // Function to get user's primary role
   const getUserRole = () => {
-    if (!userSession || !userSession.roles || userSession.roles.length === 0) return "User";
+    if (!userSession || !userSession.roles || userSession.roles.length === 0)
+      return "User";
     return userSession.roles[0].role_name || "User";
   };
 
   // Check if profile image exists (for future backend implementation)
   const getProfileImage = () => {
     if (!userSession) return null;
-    return userSession.profile_image || 
-           userSession.avatar_url || 
-           userSession.profile_picture || 
-           null;
+    return (
+      userSession.profile_image ||
+      userSession.avatar_url ||
+      userSession.profile_picture ||
+      null
+    );
   };
 
   return (
@@ -40,9 +46,11 @@ const Header = () => {
       <div className="flex items-center gap-3">
         <div className="hidden md:block">
           <div className="font-semibold text-gray-900">Dashboard</div>
-          <div className="text-xs text-gray-500">Welcome back, {getUsername()}</div>
+          <div className="text-xs text-gray-500">
+            Welcome back, {getUsername()}
+          </div>
         </div>
-        
+
         <div className="md:hidden">
           <div className="font-semibold text-gray-900">Dashboard</div>
         </div>
@@ -76,7 +84,7 @@ const Header = () => {
         {/* Profile Image (beside bell icon) */}
         <div className="flex items-center gap-2">
           {/* Dynamic Profile Image/Avatar */}
-          <div className="relative">
+          <div onClick={() => navigate("/setting")} className="relative">
             {getProfileImage() ? (
               <img
                 src={getProfileImage()}
@@ -84,13 +92,13 @@ const Header = () => {
                 className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
               />
             ) : (
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
+              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm cursor-pointer">
                 {getUserInitials()}
               </div>
             )}
             {/* Online status indicator */}
           </div>
-          
+
           {/* User Info (hidden on mobile) */}
           <div className="hidden md:block text-right">
             <div className="font-medium text-gray-900">{getUsername()}</div>

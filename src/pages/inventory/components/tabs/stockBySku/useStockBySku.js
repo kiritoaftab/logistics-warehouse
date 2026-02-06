@@ -15,6 +15,13 @@ export function useStockBySku(toast) {
   const [loading, setLoading] = useState(true);
 
   const [inventoryData, setInventoryData] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    pages: 1,
+    limit: 2,
+  });
   const [summary, setSummary] = useState({
     total_on_hand: 0,
     total_available: 0,
@@ -40,13 +47,15 @@ export function useStockBySku(toast) {
 
   useEffect(() => {
     fetchInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    fetchInventoryData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setPage(1);
   }, [f.warehouse, f.client, f.zone, f.stockStatus, f.skuSearch]);
+
+  useEffect(() => {
+    fetchInventoryData();
+  }, [f.warehouse, f.client, f.zone, f.stockStatus, f.skuSearch, page]);
 
   const fetchInitialData = async () => {
     try {
@@ -144,6 +153,8 @@ export function useStockBySku(toast) {
           }
 
           if (f.skuSearch) params.append("search", f.skuSearch);
+          params.append("page", String(page));
+          params.append("limit", String(pagination.limit || 10));
 
           const url = `${endpoint}${params.toString() ? `?${params}` : ""}`;
           const res = await http.get(url);
@@ -160,12 +171,8 @@ export function useStockBySku(toast) {
       if (!inventoryResponse)
         throw new Error("No inventory endpoint returned data");
 
-      const inventory =
-        inventoryResponse.data?.inventory ||
-        inventoryResponse.data?.items ||
-        inventoryResponse.data ||
-        [];
-
+      const inventory = inventoryResponse.data || [];
+      setPagination(inventoryResponse?.pagination);
       const summaryData = inventoryResponse.data?.summary || {
         total_on_hand: inventory.reduce(
           (s, it) => s + toNum(it.on_hand_qty ?? it.on_hand),
@@ -298,14 +305,7 @@ export function useStockBySku(toast) {
         options: clients,
         className: "w-[180px]",
       },
-      {
-        key: "skuSearch",
-        type: "search",
-        label: "SKU Search",
-        value: f.skuSearch,
-        placeholder: "Search SKU Code or Name...",
-        className: "w-[260px]",
-      },
+
       {
         key: "zone",
         type: "select",
@@ -329,6 +329,14 @@ export function useStockBySku(toast) {
           "Damaged",
         ],
         className: "w-[160px]",
+      },
+      {
+        key: "skuSearch",
+        type: "search",
+        label: "SKU Search",
+        value: f.skuSearch,
+        placeholder: "Search SKU Code or Name...",
+        className: "w-[260px]",
       },
     ],
     [clients, f, warehouses, zones],
@@ -354,5 +362,8 @@ export function useStockBySku(toast) {
     summary,
     tableData,
     refresh: fetchInventoryData,
+    pagination,
+    page,
+    setPage,
   };
 }

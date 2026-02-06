@@ -853,6 +853,6 @@
 // export default InventoryStockBySKU;
 
 // src/pages/inventory/InventoryStockBySKU.jsx
-import StockBySkuTab from "./components/tabs/stockBySku/StockBySkuTab";
+// import StockBySkuTab from "./components/tabs/stockBySku/StockBySkuTab";
 
-export default StockBySkuTab;
+// export default StockBySkuTab;

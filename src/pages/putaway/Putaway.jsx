@@ -21,6 +21,13 @@ const Putaway = () => {
     aging: 0,
   });
 
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    pages: 1,
+    limit: 5,
+  });
+
   // State for dynamic filter options
   const [filterOptions, setFilterOptions] = useState({
     warehouses: ["All"],
@@ -82,13 +89,13 @@ const Putaway = () => {
 
       const warehouseId = 1; // Default warehouse
       const response = await http.get(
-        `/grn-lines/?warehouse_id=${warehouseId}&page=1&limit=50`,
+        `/grn-lines/?warehouse_id=${warehouseId}&page=1&limit=${pagination?.limit}`,
       );
-
       if (response.data.success) {
         setPutawayData(response.data.data);
         calculateStats(response.data.data);
         extractFilterOptions(response.data.data);
+        setPagination(response?.data?.pagination);
       }
     } catch (error) {
       console.error("Error fetching putaway data:", error);

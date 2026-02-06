@@ -185,5 +185,3 @@
 // };
 
 // export default InventoryStockByLocation;
-import StockByLocationTab from "./components/tabs/stockByLocation/StockByLocationTab";
-export default StockByLocationTab;

@@ -7,10 +7,10 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
-import InventoryStockBySKU from "./InventoryStockBySKU";
-import InventoryStockByLocation from "./InventoryStockByLocation";
 import InventoryHolds from "./InventoryHolds";
-import InventoryTransactions from "./InventoryTransactions";
+import StockBySkuTab from "./components/tabs/stockBySku/StockBySkuTab";
+import TransactionsTab from "./components/tabs/transactions/TransactionsTab";
+import StockByLocationTab from "./components/tabs/stockByLocation/StockByLocationTab";
 
 const Inventory = () => {
   const [activeTab, setActiveTab] = useState("sku");
@@ -33,23 +33,24 @@ const Inventory = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "sku":
-        return <InventoryStockBySKU />;
+        return <StockBySkuTab />;
+
       case "location":
-        return <InventoryStockByLocation />;
+        return <StockByLocationTab />;
 
       case "holds":
         return <InventoryHolds />;
 
       case "transactions":
-        return <InventoryTransactions />;
+        return <TransactionsTab />;
 
       default:
-        return <InventoryStockBySKU />;
+        return <StockBySkuTab />;
     }
   };
 
   return (
-    <div className="min-h-screen  px-6 py-6">
+    <div className="min-h-screen">
       <div className="mx-auto 2xl:max-w-[1900px]">
         <PageHeader
           title="Inventory"

@@ -12,7 +12,7 @@ const Card = ({ label, value, valueClass = "text-gray-900" }) => (
 
 export default function SummaryCards({ cards = [] }) {
   return (
-    <div className="grid grid-cols-6 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
       {cards.map((c) => (
         <Card key={c.label} {...c} />
       ))}

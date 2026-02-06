@@ -21,7 +21,7 @@ const InboundASN = () => {
     total: 0,
     page: 1,
     pages: 1,
-    limit: 20,
+    limit: 10,
   });
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -55,7 +55,9 @@ const InboundASN = () => {
   const fetchASNData = async (page = 1) => {
     try {
       setLoading(true);
-      const response = await http.get(`/asns?page=${page}&limit=20`);
+      const response = await http.get(
+        `/asns?page=${page}&limit=${pagination?.limit}`,
+      );
 
       if (response.data.success) {
         setAsnData(response.data.data.asns);
@@ -256,7 +258,7 @@ const InboundASN = () => {
       type: "search",
       label: "SEARCH",
       value: filterValues.search,
-      placeholder: "ASN No / Supplier / Ref",
+      placeholder: "ASN No / Supplier",
       className: "min-w-[260px] flex-1",
     },
   ];

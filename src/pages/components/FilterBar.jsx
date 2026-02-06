@@ -121,26 +121,25 @@ const FilterBar = ({
               />
             );
           })}
+          {showActions && (
+            <div className=" flex items-center gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onApply}
+                className="w-[120px] rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+              >
+                Apply
+              </button>
+              <button
+                type="button"
+                onClick={onReset}
+                className="w-[120px] rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700"
+              >
+                Reset
+              </button>
+            </div>
+          )}
         </div>
-
-        {showActions && (
-          <div className="ml-auto flex items-center gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onApply}
-              className="w-[120px] rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              onClick={onReset}
-              className="w-[120px] rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700"
-            >
-              Reset
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

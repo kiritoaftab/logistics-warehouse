@@ -9,6 +9,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import http from "../../api/http";
 import { useToast } from "../components/toast/ToastProvider";
 import ConfirmDeleteModal from "../components/modals/ConfirmDeleteModal";
+import { getStatusBadgeColor } from "../components/helper";
 
 const AsnDetail = () => {
   const { id } = useParams();
@@ -527,15 +528,9 @@ const AsnDetail = () => {
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            line.status === "COMPLETED"
-                              ? "bg-green-100 text-green-800"
-                              : line.status === "IN_PROGRESS"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-gray-100 text-gray-800"
-                          }`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getStatusBadgeColor(line.status)}`}
                         >
-                          {line.status || "PENDING"}
+                          {line.status || ""}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
