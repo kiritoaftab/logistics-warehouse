@@ -1,8 +1,8 @@
 // InventoryHolds.jsx (Tab 3) - matches your screenshot structure
 
 import React, { useState } from "react";
-import FilterBar from "../components/FilterBar";
-import CusTable from "../components/CusTable";
+import FilterBar from "../../../../components/FilterBar";
+import CusTable from "../../../../components/CusTable";
 
 const StatusPill = ({ status }) => {
   const cls =
@@ -194,19 +194,19 @@ const InventoryHolds = () => {
       <FilterBar
         filters={filters}
         showActions
-        onFilterChange={(k, v) => setF((s) => ({ ...s, [k]: v }))}
+        onFilterChange={(k, v) => setFilterState((s) => ({ ...s, [k]: v }))}
         onApply={() => {}}
         onReset={() =>
-          setF({
+          setFilterState({
             warehouse: "WH-NYC-01",
             client: "Acme Corp",
-            skuSearch: "",
-            Location: "e.g. ZONE-Q-01",
-
-            Status: "Active ",
+            search: "",
+            location: "",
+            status: "Active",
           })
         }
       />
+
       <div className="rounded-lg border border-gray-200 bg-white">
         <CusTable columns={columns} data={data} />
       </div>

@@ -13,7 +13,6 @@ const STATUS_MAP = {
 
 export function useStockBySku(toast) {
   const [loading, setLoading] = useState(true);
-
   const [inventoryData, setInventoryData] = useState([]);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
@@ -32,7 +31,7 @@ export function useStockBySku(toast) {
   });
 
   const [f, setF] = useState({
-    warehouse: "5",
+    warehouse: "1",
     client: "All",
     skuSearch: "",
     zone: "All",
@@ -70,10 +69,12 @@ export function useStockBySku(toast) {
       const res = await http.get("/warehouses");
       if (res.data?.success) {
         const list = res.data.data || [];
-        const options = list.map((w) => ({
-          value: String(w.id),
-          label: `${w.warehouse_code} - ${w.warehouse_name}`,
-        }));
+        const options = list.map((w) => {
+          return {
+            value: String(w.id),
+            label: `${w.warehouse_code} - ${w.warehouse_name}`,
+          };
+        });
         if (options.length) setWarehouses(options);
       }
     } catch (e) {
@@ -87,7 +88,6 @@ export function useStockBySku(toast) {
       const res = await http.get("/clients");
       if (res.data?.success) {
         const data = res.data.data || {};
-        // your backend seems inconsistent; handle both array + object
         const maybe = data.clients || data;
         setClients(
           Array.isArray(maybe)
