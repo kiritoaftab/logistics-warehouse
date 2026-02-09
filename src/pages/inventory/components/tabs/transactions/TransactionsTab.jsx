@@ -11,8 +11,16 @@ import {
 
 export default function TransactionsTab() {
   const toast = useToast();
-  const { loading, f, setF, filters, data, pagination, refresh } =
-    useTransactions(toast);
+  const { 
+    loading, 
+    f, 
+    setF, 
+    filters, 
+    data, 
+    pagination, 
+    refresh,
+    handlePageChange 
+  } = useTransactions(toast);
 
   const columns = useMemo(
     () => [
@@ -163,7 +171,7 @@ export default function TransactionsTab() {
       <FilterBar
         filters={filters}
         showActions
-        onFilterChange={(k, v) => setF((s) => ({ ...s, [k]: v, page: 1 }))}
+        onFilterChange={(k, v) => setF((s) => ({ ...s, [k]: v }))}
         onApply={refresh}
         onReset={() =>
           setF({
@@ -181,25 +189,41 @@ export default function TransactionsTab() {
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+            <div className="text-gray-500">Loading transactions...</div>
+          </div>
+        </div>
+      ) : data.length === 0 ? (
+        <div className="flex justify-center items-center h-64 flex-col">
+          <div className="text-gray-500 mb-2 text-lg">
+            No transactions found
+          </div>
+          <button
+            onClick={refresh}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+          >
+            Refresh
+          </button>
         </div>
       ) : (
         <>
           <div className="text-sm text-gray-500">
-            Total: {pagination.total} • Page {pagination.page} /{" "}
-            {pagination.pages}
+            Showing {data.length} of {pagination.total} transactions • Page {pagination.page} of {pagination.pages}
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
             <CusTable columns={columns} data={data} />
           </div>
 
-          <div className="rounded-b-lg border border-t-0 border-gray-200 bg-white">
-            <Pagination
-              pagination={pagination}
-              onPageChange={(p) => setF((s) => ({ ...s, page: p }))}
-            />
-          </div>
+          {pagination.pages > 1 && (
+            <div className="rounded-b-lg border border-t-0 border-gray-200 bg-white">
+              <Pagination
+                pagination={pagination}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

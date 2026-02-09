@@ -1,4 +1,6 @@
+// StockBySkuTab.js
 import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import FilterBar from "@/pages/components/FilterBar";
 import CusTable from "@/pages/components/CusTable";
 import { useToast } from "@/pages/components/toast/ToastProvider";
@@ -9,6 +11,7 @@ import Pagination from "../../../../components/Pagination";
 
 export default function StockBySkuTab() {
   const toast = useToast();
+  const navigate = useNavigate();
   const {
     loading,
     f,
@@ -45,7 +48,10 @@ export default function StockBySkuTab() {
               />
             </div>
             <div className="leading-tight">
-              <div className="text-sm font-semibold text-blue-600 hover:underline cursor-pointer">
+              <div 
+                className="text-sm font-semibold text-blue-600 hover:underline cursor-pointer"
+                onClick={() => navigate(`/inventory/sku/${r.id}`)} // Navigate to detail page
+              >
                 {r.sku}
               </div>
               <div className="text-xs text-gray-500">{r.name}</div>
@@ -90,18 +96,6 @@ export default function StockBySkuTab() {
         ),
       },
       {
-        key: "locations",
-        title: "Locations",
-        render: (r) => (
-          <div
-            className="text-xs text-gray-600 max-w-[160px] truncate"
-            title={r.locations}
-          >
-            {r.locations}
-          </div>
-        ),
-      },
-      {
         key: "risk",
         title: "Status",
         render: (r) => <StatusPill text={r.risk} />,
@@ -112,34 +106,30 @@ export default function StockBySkuTab() {
         render: (r) => (
           <div className="flex gap-2">
             <button
-              onClick={() =>
-                toast.info(`Viewing ${r.sku} (wire to detail later)`)
-              }
+              onClick={() => navigate(`/inventory/sku/${r.id}`)} // Navigate to detail page
               className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
             >
-              View
-            </button>
-            <button
-              onClick={() =>
-                toast.info(`Adjust stock for ${r.sku} (open modal later)`)
-              }
-              className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100"
-            >
-              Adjust
+              View Details
             </button>
           </div>
         ),
       },
     ],
-    [toast],
+    [navigate],
   );
 
   return (
     <div className="space-y-4">
       <SummaryCards
         cards={[
-          { label: "Total SKUs", value: tableData.length },
-          { label: "On Hand", value: summary.total_on_hand },
+          { 
+            label: "Total SKUs", 
+            value: summary.total_skus || tableData.length 
+          },
+          { 
+            label: "On Hand", 
+            value: summary.total_on_hand 
+          },
           {
             label: "Available",
             value: summary.total_available,
@@ -200,7 +190,6 @@ export default function StockBySkuTab() {
                 f.warehouse
               }`}
             {f.client !== "All" && ` for ${f.client}`}
-            {f.zone !== "All" && ` in zone ${f.zone}`}
             {f.stockStatus !== "All" && ` with status "${f.stockStatus}"`}
             {f.skuSearch && ` matching "${f.skuSearch}"`}
           </div>
@@ -220,8 +209,7 @@ export default function StockBySkuTab() {
           </div>
 
           <div className="text-xs text-gray-400 text-center">
-            Aggregated by SKU. Use “View” for location-level drilldown (next
-            step).
+            Click on SKU Code or "View Details" to see detailed information and location-level breakdown.
           </div>
         </>
       )}

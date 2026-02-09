@@ -34,6 +34,8 @@ import { RequirePermission, RequireAuth } from "../utils/auth/RequireAuth";
 import { ROUTE_PERMS } from "./routePerms";
 import Unauthorized from "../unauthorized/Unauthorized";
 import StockBySkuTab from "../inventory/components/tabs/stockBySku/StockBySkuTab";
+import SkuDetailPage from "../inventory/components/SkuDetailPage";
+import LocationDetailPage from "../inventory/components/tabs/stockByLocation/LocationDetailPage";
 
 const protect = (path, element) => {
   const rule = ROUTE_PERMS[path];
@@ -139,6 +141,12 @@ const NewRoutes = [
 
   { path: "/billing", element: protect("/billing", <Billing />) },
   { path: "/setting", element: protect("/setting", <Setting />) },
+      { path: "/inventory/sku/:skuId", element: protect("/inventory/sku/:skuId", <SkuDetailPage />) },
+     {
+  path: "/inventory/zone/:zone",
+  element: protect("/inventory", <LocationDetailPage />),
+},
+
 ];
 
 export default NewRoutes;

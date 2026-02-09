@@ -3,7 +3,8 @@ import http from "@/api/http";
 
 export function useTransactions(toast) {
   const [loading, setLoading] = useState(true);
-
+  const [data, setData] = useState([]);
+  
   const [f, setF] = useState({
     warehouse_id: "1",
     sku_id: "",
@@ -12,19 +13,18 @@ export function useTransactions(toast) {
     start_date: "",
     end_date: "",
     page: 1,
+    limit: 10,
   });
 
-  const [data, setData] = useState([]);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
-    limit: 4,
+    limit: 10,
     pages: 1,
   });
 
   useEffect(() => {
     fetchTransactions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     f.warehouse_id,
     f.sku_id,
@@ -42,7 +42,6 @@ export function useTransactions(toast) {
       const params = new URLSearchParams();
 
       if (f.warehouse_id) params.append("warehouse_id", String(f.warehouse_id));
-
       if (f.sku_id) params.append("sku_id", String(f.sku_id));
       if (f.location_id) params.append("location_id", String(f.location_id));
 
@@ -53,38 +52,53 @@ export function useTransactions(toast) {
       if (f.start_date) params.append("start_date", f.start_date);
       if (f.end_date) params.append("end_date", f.end_date);
 
-      params.append("page", String(pagination.page || 1));
-      params.append("limit", String(pagination.limit || 10));
+      params.append("page", String(f.page || 1));
+      params.append("limit", String(f.limit || 10));
 
       const url = `/inventory/transactions?${params.toString()}`;
+      console.log("Fetching transactions from:", url);
 
       const res = await http.get(url);
 
       if (!res.data?.success) {
         setData([]);
-        setPagination({ total: 0, page: 1, limit: pagination.limit, pages: 1 });
+        setPagination({ total: 0, page: 1, limit: 10, pages: 1 });
         return;
       }
 
       const d = res.data.data;
       const list = Array.isArray(d) ? d : d?.transactions || [];
-      const pg = res.data.pagination ||
-        d?.pagination || {
+      
+      const apiPagination = res.data.pagination || d?.pagination;
+      
+      if (apiPagination) {
+        setPagination({
+          total: apiPagination.total || list.length,
+          page: apiPagination.page || f.page,
+          limit: apiPagination.limit || f.limit,
+          pages: apiPagination.pages || Math.ceil((apiPagination.total || list.length) / (apiPagination.limit || f.limit)),
+        });
+      } else {
+        setPagination({
           total: list.length,
-          page: pagination.page || 1,
-          limit: pagination.limit || 10,
-          pages: 1,
-        };
+          page: f.page,
+          limit: f.limit,
+          pages: Math.ceil(list.length / f.limit),
+        });
+      }
 
       setData(list);
-      setPagination(pg);
     } catch (e) {
-      console.error(e);
+      console.error("Transactions error:", e);
       setData([]);
-      toast?.error?.("Failed to load transactions");
+      toast?.error?.(e.response?.data?.message || "Failed to load transactions");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    setF(prev => ({ ...prev, page: newPage }));
   };
 
   const filters = useMemo(
@@ -157,5 +171,6 @@ export function useTransactions(toast) {
     data,
     pagination,
     refresh: fetchTransactions,
+    handlePageChange,
   };
 }

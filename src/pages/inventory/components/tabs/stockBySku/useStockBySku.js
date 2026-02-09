@@ -1,26 +1,35 @@
+// useStockBySku.js
 import { useEffect, useMemo, useState } from "react";
 import http from "@/api/http";
-import { toNum, worstStatus } from "../../inventoryFormatters";
+import { toNum } from "../../inventoryFormatters";
 
 const STATUS_MAP = {
-  Healthy: "HEALTHY",
+  "Healthy": "HEALTHY",
   "Low Stock": "LOW_STOCK",
   "Expiry Risk": "EXPIRY_RISK",
   "QC Hold": "HOLD",
   "Out of Stock": "OUT_OF_STOCK",
-  Damaged: "DAMAGED",
+  "Damaged": "DAMAGED",
+};
+
+const REVERSE_STATUS_MAP = {
+  "HEALTHY": "Healthy",
+  "LOW_STOCK": "Low Stock",
+  "EXPIRY_RISK": "Expiry Risk",
+  "HOLD": "QC Hold",
+  "DAMAGED": "Damaged",
+  "OUT_OF_STOCK": "Out of Stock",
 };
 
 export function useStockBySku(toast) {
   const [loading, setLoading] = useState(true);
-
-  const [inventoryData, setInventoryData] = useState([]);
+  const [skuData, setSkuData] = useState([]); // This will hold the aggregated SKU data
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
     pages: 1,
-    limit: 10,
+    limit: 20,
   });
   const [summary, setSummary] = useState({
     total_on_hand: 0,
@@ -28,22 +37,21 @@ export function useStockBySku(toast) {
     total_hold: 0,
     total_allocated: 0,
     total_damaged: 0,
-    locations: 0,
+    total_skus: 0,
   });
 
   const [f, setF] = useState({
-    warehouse: "5",
+    warehouse: "All",
     client: "All",
     skuSearch: "",
-    zone: "All",
     stockStatus: "All",
   });
 
   const [warehouses, setWarehouses] = useState([
-    { value: "1", label: "WH001 - Main Mumbai Warehouse" },
+    { value: "All", label: "All Warehouses" }
   ]);
   const [clients, setClients] = useState(["All"]);
-  const [zones, setZones] = useState(["All"]);
+  const [statuses, setStatuses] = useState(["All"]);
 
   useEffect(() => {
     fetchInitialData();
@@ -51,15 +59,15 @@ export function useStockBySku(toast) {
 
   useEffect(() => {
     setPage(1);
-  }, [f.warehouse, f.client, f.zone, f.stockStatus, f.skuSearch]);
+  }, [f.warehouse, f.client, f.stockStatus, f.skuSearch]);
 
   useEffect(() => {
-    fetchInventoryData();
-  }, [f.warehouse, f.client, f.zone, f.stockStatus, f.skuSearch, page]);
+    fetchSkuData();
+  }, [f.warehouse, f.client, f.stockStatus, f.skuSearch, page]);
 
   const fetchInitialData = async () => {
     try {
-      await Promise.all([fetchWarehouses(), fetchClients(), fetchZones()]);
+      await Promise.all([fetchWarehouses(), fetchClients()]);
     } catch (e) {
       console.error(e);
     }
@@ -70,11 +78,14 @@ export function useStockBySku(toast) {
       const res = await http.get("/warehouses");
       if (res.data?.success) {
         const list = res.data.data || [];
-        const options = list.map((w) => ({
-          value: String(w.id),
-          label: `${w.warehouse_code} - ${w.warehouse_name}`,
-        }));
-        if (options.length) setWarehouses(options);
+        const options = [
+          { value: "All", label: "All Warehouses" },
+          ...list.map((w) => ({
+            value: String(w.id),
+            label: `${w.warehouse_code} - ${w.warehouse_name}`,
+          })),
+        ];
+        setWarehouses(options);
       }
     } catch (e) {
       console.error(e);
@@ -87,13 +98,12 @@ export function useStockBySku(toast) {
       const res = await http.get("/clients");
       if (res.data?.success) {
         const data = res.data.data || {};
-        // your backend seems inconsistent; handle both array + object
-        const maybe = data.clients || data;
-        setClients(
-          Array.isArray(maybe)
-            ? ["All", ...maybe.map((c) => c.client_name || c)]
-            : ["All"],
-        );
+        const clientsList = data.clients || data || [];
+        const clientOptions = [
+          "All",
+          ...clientsList.map((c) => c.client_name || String(c)),
+        ];
+        setClients(clientOptions);
       }
     } catch (e) {
       console.error(e);
@@ -101,190 +111,189 @@ export function useStockBySku(toast) {
     }
   };
 
-  const fetchZones = async () => {
-    try {
-      const res = await http.get("/locations");
-      if (res.data?.success) {
-        const locations = res.data.data?.locations || res.data.data || [];
-        const unique = [
-          "All",
-          ...new Set(
-            locations
-              .map((l) => l.zone)
-              .filter(Boolean)
-              .sort(),
-          ),
-        ];
-        setZones(unique.length ? unique : ["All"]);
+  const fetchStatusOptions = (skuItems) => {
+    const uniqueStatuses = new Set(["All"]);
+    skuItems.forEach(item => {
+      if (item.status) {
+        const displayStatus = REVERSE_STATUS_MAP[item.status] || item.status;
+        uniqueStatuses.add(displayStatus);
       }
-    } catch (e) {
-      console.error(e);
-      setZones(["All", "A", "B", "C", "D"]);
-    }
+    });
+    setStatuses(Array.from(uniqueStatuses));
   };
 
-  const fetchInventoryData = async () => {
+  const fetchSkuData = async () => {
     try {
       setLoading(true);
-
-      const endpoints = [
-        "/inventory",
-        "/inventory/stock",
-        "/inventory/items",
-        "/inventory/all",
-      ];
-
-      let inventoryResponse = null;
-
-      // 1) hit first working endpoint
-      for (const endpoint of endpoints) {
-        try {
-          const params = new URLSearchParams();
-
-          // filters
-          if (f.warehouse && f.warehouse !== "All")
-            params.append("warehouse_id", f.warehouse);
-          if (f.client && f.client !== "All")
-            params.append("client_name", f.client);
-          if (f.zone && f.zone !== "All") params.append("zone", f.zone);
-
-          if (f.stockStatus && f.stockStatus !== "All") {
-            params.append(
-              "status",
-              STATUS_MAP[f.stockStatus] || String(f.stockStatus).toUpperCase(),
-            );
-          }
-
-          if (f.skuSearch) params.append("search", f.skuSearch);
-
-          // pagination
-          params.append("page", String(page));
-          params.append("limit", String(pagination.limit || 10));
-
-          const url = `${endpoint}${params.toString() ? `?${params.toString()}` : ""}`;
-          const res = await http.get(url);
-
-          if (res.data?.success) {
-            inventoryResponse = res.data;
-            break;
-          }
-        } catch (e) {
-          console.log(e);
-        }
+      
+      // Build query parameters for the group-by-sku endpoint
+      const params = new URLSearchParams();
+      
+      if (f.warehouse !== "All") {
+        params.append("warehouse_id", f.warehouse);
       }
-
-      if (!inventoryResponse)
-        throw new Error("No inventory endpoint returned data");
-
-      const payload = inventoryResponse.data ?? {};
-      const rows = payload;
-
-      const apiPagination = inventoryResponse.pagination || {};
-
-      setPagination(apiPagination);
-
-      const apiSummary = payload.summary;
-
-      const computedSummary = {
-        total_on_hand: rows.reduce(
-          (s, it) => s + toNum(it.on_hand_qty ?? it.on_hand),
-          0,
-        ),
-        total_available: rows.reduce(
-          (s, it) => s + toNum(it.available_qty ?? it.available),
-          0,
-        ),
-        total_hold: rows.reduce(
-          (s, it) => s + toNum(it.hold_qty ?? it.hold),
-          0,
-        ),
-        total_allocated: rows.reduce(
-          (s, it) => s + toNum(it.allocated_qty ?? it.allocated),
-          0,
-        ),
-        total_damaged: rows.reduce(
-          (s, it) => s + toNum(it.damaged_qty ?? it.damaged),
-          0,
-        ),
-        locations: new Set(
-          rows.map((it) => it.location_id ?? it.location?.id).filter(Boolean),
-        ).size,
-      };
-
-      setInventoryData(rows);
-      setSummary(apiSummary || computedSummary);
-
-      if (rows.length) {
-        const zonesFromRows = [
-          "All",
-          ...new Set(
-            rows
-              .map((it) => it.location?.zone || it.zone)
-              .filter(Boolean)
-              .sort(),
-          ),
-        ];
-        if (zonesFromRows.length > 1) setZones(zonesFromRows);
+      if (f.client !== "All") {
+        params.append("client_id", f.client);
+      }
+      if (f.stockStatus !== "All") {
+        const statusValue = STATUS_MAP[f.stockStatus] || f.stockStatus.toUpperCase();
+        params.append("status", statusValue);
+      }
+      if (f.skuSearch) {
+        params.append("search", f.skuSearch);
+      }
+      
+      // Pagination
+      params.append("page", String(page));
+      params.append("limit", String(pagination.limit));
+      
+      // Use the group-by-sku endpoint
+      const url = `/inventory/group-by-sku${params.toString() ? `?${params.toString()}` : ""}`;
+      const res = await http.get(url);
+      
+      if (res.data?.success) {
+        const skuItems = res.data.data || [];
+        
+        // Set the SKU data
+        setSkuData(skuItems);
+        
+        // Calculate summary from the data
+        const calculatedSummary = calculateSummary(skuItems);
+        setSummary(calculatedSummary);
+        
+        // Update status options based on data
+        fetchStatusOptions(skuItems);
+        
+        // Update pagination
+        if (res.data.pagination) {
+          setPagination(res.data.pagination);
+        } else {
+          // Calculate client-side pagination
+          setPagination(prev => ({
+            ...prev,
+            page: page,
+            total: skuItems.length,
+            pages: Math.ceil(skuItems.length / prev.limit)
+          }));
+        }
+      } else {
+        throw new Error("API did not return success");
       }
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching SKU data:", e);
       toast?.error?.(
-        "Failed to load inventory. Please check API endpoint/params.",
+        e.response?.data?.message || "Failed to load SKU data"
       );
-      setInventoryData([]);
+      setSkuData([]);
       setSummary({
         total_on_hand: 0,
         total_available: 0,
         total_hold: 0,
         total_allocated: 0,
         total_damaged: 0,
-        locations: 0,
+        total_skus: 0,
       });
-      setPagination((p) => ({ ...p, total: 0, page: 1, pages: 1 }));
     } finally {
       setLoading(false);
     }
   };
 
+  const calculateSummary = (skuItems) => {
+    let total_on_hand = 0;
+    let total_available = 0;
+    let total_hold = 0;
+    let total_allocated = 0;
+    let total_damaged = 0;
+    
+    skuItems.forEach(item => {
+      total_on_hand += toNum(item.total_on_hand);
+      total_available += toNum(item.total_available);
+      total_hold += toNum(item.total_hold);
+      total_allocated += toNum(item.total_allocated);
+      total_damaged += toNum(item.total_damaged);
+    });
+    
+    return {
+      total_on_hand,
+      total_available,
+      total_hold,
+      total_allocated,
+      total_damaged,
+      total_skus: skuItems.length,
+    };
+  };
+
+  // Apply filters to the SKU data
+  const filteredSkuData = useMemo(() => {
+    let filtered = [...skuData];
+    
+    if (f.warehouse !== "All") {
+      // Note: You might need to add warehouse_id to the group-by-sku response
+      // For now, we'll skip this filter if warehouse_id is not in the response
+      filtered = filtered.filter(item => 
+        item.warehouse_id ? String(item.warehouse_id) === f.warehouse : true
+      );
+    }
+    
+    if (f.client !== "All") {
+      // Note: You might need to add client_id to the group-by-sku response
+      filtered = filtered.filter(item => 
+        item.client_id ? String(item.client_id) === f.client : true
+      );
+    }
+    
+    if (f.stockStatus !== "All") {
+      const statusValue = STATUS_MAP[f.stockStatus] || f.stockStatus.toUpperCase();
+      filtered = filtered.filter(item => 
+        item.status === statusValue || 
+        REVERSE_STATUS_MAP[item.status] === f.stockStatus
+      );
+    }
+    
+    if (f.skuSearch) {
+      const searchLower = f.skuSearch.toLowerCase();
+      filtered = filtered.filter(item => 
+        item.sku?.sku_code?.toLowerCase().includes(searchLower) ||
+        item.sku?.sku_name?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return filtered;
+  }, [skuData, f]);
+
+  // Transform data for table with pagination
   const tableData = useMemo(() => {
-    if (!Array.isArray(inventoryData)) return [];
-
-    return inventoryData.map((item) => {
-      const zone = item.location?.zone || "-";
-      const locCode = item.location?.location_code || "-";
-
+    // Apply pagination to filtered data
+    const start = (page - 1) * pagination.limit;
+    const end = start + pagination.limit;
+    const paginatedData = filteredSkuData.slice(start, end);
+    
+    return paginatedData.map((item) => {
+      const displayStatus = REVERSE_STATUS_MAP[item.status] || item.status;
+      
       return {
-        id: item.id,
-
+        id: item.sku_id,
         sku: item.sku?.sku_code || "-",
         name: item.sku?.sku_name || "-",
         category: item.sku?.category || "-",
         uom: item.sku?.uom || "-",
-
-        onHand: toNum(item.on_hand_qty).toLocaleString(),
-        available: toNum(item.available_qty).toLocaleString(),
-        hold: toNum(item.hold_qty).toLocaleString(),
-        allocated: toNum(item.allocated_qty).toLocaleString(),
-        damaged: toNum(item.damaged_qty).toLocaleString(),
-
-        // ✅ combined location display
-        locations: `${zone} - ${locCode}`,
-
-        batch: item.batch_no || "-",
-        expiry: item.expiry_date
-          ? new Date(item.expiry_date).toLocaleDateString()
-          : "-",
-
-        risk: item.status || "HEALTHY",
-
+        onHand: toNum(item.total_on_hand).toLocaleString(),
+        available: toNum(item.total_available).toLocaleString(),
+        hold: toNum(item.total_hold).toLocaleString(),
+        allocated: toNum(item.total_allocated).toLocaleString(),
+        damaged: toNum(item.total_damaged).toLocaleString(),
+        locations: "Multiple Locations",
+        batch: item.nearest_expiry ? 
+          new Date(item.nearest_expiry).toLocaleDateString() : 
+          "No Expiry",
+        risk: displayStatus,
         img: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-          item.sku?.sku_code || "SKU",
+          item.sku?.sku_code || "SKU"
         )}&background=random&color=fff`,
-
         raw: item,
       };
     });
-  }, [inventoryData]);
+  }, [filteredSkuData, page, pagination.limit]);
 
   const filters = useMemo(
     () => [
@@ -293,7 +302,10 @@ export function useStockBySku(toast) {
         type: "select",
         label: "Warehouse",
         value: f.warehouse,
-        options: warehouses,
+        options: warehouses.map(w => ({
+          value: w.value,
+          label: w.label
+        })),
         className: "w-[240px]",
       },
       {
@@ -301,32 +313,21 @@ export function useStockBySku(toast) {
         type: "select",
         label: "Client",
         value: f.client,
-        options: clients,
+        options: clients.map(client => ({
+          value: client === "All" ? "All" : "1", 
+          label: client
+        })),
         className: "w-[180px]",
-      },
-
-      {
-        key: "zone",
-        type: "select",
-        label: "Zone",
-        value: f.zone,
-        options: zones,
-        className: "w-[120px]",
       },
       {
         key: "stockStatus",
         type: "select",
         label: "Stock Status",
         value: f.stockStatus,
-        options: [
-          "All",
-          "Healthy",
-          "Low Stock",
-          "Expiry Risk",
-          "QC Hold",
-          "Out of Stock",
-          "Damaged",
-        ],
+        options: statuses.map(status => ({
+          value: status,
+          label: status === "All" ? "All Statuses" : status
+        })),
         className: "w-[160px]",
       },
       {
@@ -338,15 +339,14 @@ export function useStockBySku(toast) {
         className: "w-[260px]",
       },
     ],
-    [clients, f, warehouses, zones],
+    [clients, f, warehouses, statuses],
   );
 
   const resetFilters = () =>
     setF({
-      warehouse: "1",
+      warehouse: "All",
       client: "All",
       skuSearch: "",
-      zone: "All",
       stockStatus: "All",
     });
 
@@ -357,11 +357,15 @@ export function useStockBySku(toast) {
     filters,
     resetFilters,
     warehouses,
-    inventoryData,
+    skuData,
     summary,
     tableData,
-    refresh: fetchInventoryData,
-    pagination,
+    refresh: fetchSkuData,
+    pagination: {
+      ...pagination,
+      total: filteredSkuData.length,
+      pages: Math.ceil(filteredSkuData.length / pagination.limit)
+    },
     page,
     setPage,
   };
