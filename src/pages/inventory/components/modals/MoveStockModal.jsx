@@ -39,11 +39,25 @@ const MoveStockModal = ({ open, onClose }) => {
       return;
     }
     try {
-      await http.post("/inventory/transfer", {
+      const res = await http.post("/inventory/transfer", {
         ...form,
         qty: Number(form.qty),
       });
 
+      toast.success(res?.data?.message);
+      setForm({
+        warehouse_id: "",
+        sku_id: "",
+        from_location_id: "",
+        to_location_id: "",
+        adjustment_type: "SET",
+        batch_no: "",
+        serial_no: "",
+        expiry_date: "",
+        qty: "",
+        reason: "",
+        notes: "",
+      });
       onClose();
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to move stock");
@@ -58,6 +72,23 @@ const MoveStockModal = ({ open, onClose }) => {
     });
   }, [open]);
 
+  const resetandclose = () => {
+    setForm({
+      warehouse_id: "",
+      sku_id: "",
+      from_location_id: "",
+      to_location_id: "",
+      adjustment_type: "SET",
+      batch_no: "",
+      serial_no: "",
+      expiry_date: "",
+      qty: "",
+      reason: "",
+      notes: "",
+    });
+    onClose();
+  };
+
   return (
     <BaseModal
       open={open}
@@ -65,7 +96,7 @@ const MoveStockModal = ({ open, onClose }) => {
       title="Move Stock"
       footer={
         <>
-          <button onClick={onClose} className="px-4 py-2 text-sm">
+          <button onClick={resetandclose} className="px-4 py-2 text-sm">
             Cancel
           </button>
           <button
