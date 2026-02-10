@@ -68,13 +68,20 @@ export default function TransactionsTab() {
       {
         key: "qty",
         title: "Quantity",
-        render: (r) => (
-          <div className="flex items-center">
-            <span className="inline-flex items-center justify-center min-w-[3rem] px-3 py-1 rounded-md bg-gray-50 text-sm font-semibold text-gray-900 border border-gray-200">
-              {r.qty}
-            </span>
-          </div>
-        ),
+        render: (r) => {
+          const isPositive = Number(r.qty) >= 0;
+          return (
+            <div className="flex items-center">
+              <span className={`inline-flex items-center justify-center min-w-[3rem] px-3 py-1 rounded-md text-sm font-semibold border ${
+                isPositive 
+                  ? 'bg-green-50 text-green-700 border-green-200' 
+                  : 'bg-red-50 text-red-700 border-red-200'
+              }`}>
+                {isPositive ? `+${r.qty}` : r.qty}
+              </span>
+            </div>
+          );
+        },
       },
       {
         key: "locations",
@@ -88,6 +95,9 @@ export default function TransactionsTab() {
                   <span className="text-gray-400">—</span>
                 )}
               </span>
+              {r.from_location?.zone && (
+                <span className="text-xs text-gray-500">Zone {r.from_location.zone}</span>
+              )}
             </div>
             <svg
               className="w-4 h-4 text-gray-400"
@@ -109,6 +119,9 @@ export default function TransactionsTab() {
                   <span className="text-gray-400">—</span>
                 )}
               </span>
+              {r.to_location?.zone && (
+                <span className="text-xs text-gray-500">Zone {r.to_location.zone}</span>
+              )}
             </div>
           </div>
         ),
@@ -139,6 +152,11 @@ export default function TransactionsTab() {
             <span className="text-xs text-gray-500 font-mono">
               {r.reference_id}
             </span>
+            {r.notes && (
+              <div className="text-xs text-gray-500 truncate mt-1" title={r.notes}>
+                {r.notes}
+              </div>
+            )}
           </div>
         ),
       },
@@ -175,12 +193,10 @@ export default function TransactionsTab() {
         onApply={refresh}
         onReset={() =>
           setF({
-            warehouse_id: "1",
-            sku_id: "",
-            location_id: "",
+            warehouse_id: "All",
+            sku_id: "All",
+            location_id: "All",
             transaction_type: "All",
-            start_date: "",
-            end_date: "",
             page: 1,
             limit: 10,
           })
