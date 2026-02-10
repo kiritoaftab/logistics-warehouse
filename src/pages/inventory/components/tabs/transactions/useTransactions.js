@@ -100,7 +100,7 @@ export function useTransactions(toast) {
     if (warehousesOptions.length > 1) { // More than just "All"
       setF(prev => ({
         ...prev,
-        warehouse_id: warehousesOptions[1].value // Skip "All", select first real warehouse
+        // warehouse_id: warehousesOptions[1].value // Skip "All", select first real warehouse
       }));
     }
   } catch (error) {

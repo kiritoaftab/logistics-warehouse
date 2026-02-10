@@ -41,7 +41,7 @@ export function useStockBySku(toast) {
   });
 
   const [f, setF] = useState({
-    warehouse: "1",
+    warehouse: "All",
     client: "All",
     skuSearch: "",
     stockStatus: "All",

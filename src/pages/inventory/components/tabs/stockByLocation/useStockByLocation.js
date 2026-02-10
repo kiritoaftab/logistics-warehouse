@@ -14,11 +14,11 @@ export function useStockByLocation(toast) {
   });
 
   const [f, setF] = useState({
-    warehouse: "", // Start empty, will be set after fetching
+    warehouse: "All", // Start empty, will be set after fetching
     zone: "All",
   });
 
-  const [warehouses, setWarehouses] = useState([]);
+  const [warehouses, setWarehouses] = useState([""]);
   const [zones, setZones] = useState(["All"]);
 
   useEffect(() => {
