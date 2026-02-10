@@ -31,15 +31,39 @@ const AdjustStockModal = ({ open, onClose }) => {
       return;
     }
     try {
-      await http.post("/inventory/adjust", {
+      const res = await http.post("/inventory/adjust", {
         ...form,
         qty: Number(form.qty),
       });
-
+      toast.success(res?.data?.message);
+      setForm({
+        warehouse_id: "",
+        client_id: "",
+        sku_id: "",
+        location_id: "",
+        adjustment_type: "SET",
+        qty: "",
+        reason: "",
+        notes: "",
+      });
       onClose();
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to move stock");
     }
+  };
+
+  const resetandclose = () => {
+    setForm({
+      warehouse_id: "",
+      client_id: "",
+      sku_id: "",
+      location_id: "",
+      adjustment_type: "SET",
+      qty: "",
+      reason: "",
+      notes: "",
+    });
+    onClose();
   };
 
   return (
@@ -49,7 +73,7 @@ const AdjustStockModal = ({ open, onClose }) => {
       title="Adjust Stock"
       footer={
         <>
-          <button onClick={onClose} className="px-4 py-2 text-sm">
+          <button onClick={resetandclose} className="px-4 py-2 text-sm">
             Cancel
           </button>
           <button

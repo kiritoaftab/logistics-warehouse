@@ -7,7 +7,7 @@ const BaseModal = ({ open, onClose, title, children, footer }) => {
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center">
+    <div className="fixed inset-0 z-40 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       <div className="relative w-full max-w-xl rounded-lg bg-white shadow-xl">
