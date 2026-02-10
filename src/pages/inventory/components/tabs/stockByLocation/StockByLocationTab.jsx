@@ -87,20 +87,19 @@ export default function StockByLocationTab() {
         title: "SKUs",
         render: (r) => <span className="font-medium">{r.sku_count}</span>,
       },
-      // {
-      //   key: "actions",
-      //   title: "Actions",
-      //   render: (r) => (
-      //     <div className="flex gap-2">
-      //       <button
-      //         onClick={() => navigate(`/inventory/zone/${r.zone}`)} // Add drill-down if needed
-      //         className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-      //       >
-      //         View Details
-      //       </button>
-      //     </div>
-      //   ),
-      // },
+      {
+        key: "actions",
+        title: "Actions",
+        render: (r) => (
+          <div className="flex gap-2">
+            <button
+              className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              View Contents
+            </button>
+          </div>
+        ),
+      },
     ],
     [navigate],
   );
