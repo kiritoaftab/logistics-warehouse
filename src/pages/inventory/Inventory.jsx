@@ -11,9 +11,13 @@ import InventoryHolds from "./components/tabs/inventoryholds/InventoryHoldsTab";
 import StockBySkuTab from "./components/tabs/stockBySku/StockBySkuTab";
 import TransactionsTab from "./components/tabs/transactions/TransactionsTab";
 import StockByLocationTab from "./components/tabs/stockByLocation/StockByLocationTab";
+import MoveStockModal from "./components/modals/MoveStockModal";
+import AdjustStockModal from "./components/modals/AdjustStockModal";
 
 const Inventory = () => {
   const [activeTab, setActiveTab] = useState("sku");
+  const [openAdjust, setOpenAdjust] = useState(false);
+  const [openMove, setOpenMove] = useState(false);
 
   const TabBtn = ({ id, children }) => {
     const active = activeTab === id;
@@ -65,11 +69,17 @@ const Inventory = () => {
                 <RefreshCcw size={16} />
                 Cycle Count
               </button>
-              <button className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">
+              <button
+                onClick={() => setOpenMove(true)}
+                className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700"
+              >
                 <MoveRight size={16} />
                 Move Stock
               </button>
-              <button className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-white">
+              <button
+                onClick={() => setOpenAdjust(true)}
+                className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+              >
                 <SlidersHorizontal size={16} />
                 Adjust Stock
               </button>
@@ -89,6 +99,12 @@ const Inventory = () => {
 
         {renderContent()}
       </div>
+
+      <MoveStockModal open={openMove} onClose={() => setOpenMove(false)} />
+      <AdjustStockModal
+        open={openAdjust}
+        onClose={() => setOpenAdjust(false)}
+      />
     </div>
   );
 };
