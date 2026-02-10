@@ -33,6 +33,38 @@ const PaginatedEntityDropdown = ({
   const [search, setSearch] = useState("");
 
   const wrapRef = useRef(null);
+  // preload selected item if value exists
+  useEffect(() => {
+    if (!value) return;
+
+    const fetchSelected = async () => {
+      try {
+        const qs = new URLSearchParams();
+        qs.set("id", value); // fetch by ID
+        // include any extra query params
+        Object.entries(query || {}).forEach(([k, v]) => {
+          if (v != null && v !== "") qs.set(k, String(v));
+        });
+
+        const res = await http.get(`${endpoint}?${qs.toString()}`);
+        const list = res?.data?.data?.[listKey] || [];
+
+        if (list.length) {
+          setItems((prev) => {
+            if (!prev.find((x) => String(x.id) === String(value))) {
+              return [...list, ...prev];
+            }
+            return prev;
+          });
+        }
+      } catch (e) {
+        console.error("Failed to fetch selected item", e);
+      }
+    };
+
+    fetchSelected();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, endpoint, JSON.stringify(query)]);
 
   // close on outside click
   useEffect(() => {

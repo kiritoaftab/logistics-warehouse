@@ -6,7 +6,8 @@ import { useToast } from "../../components/toast/ToastProvider";
 import StatusPill from "./StatusPill";
 import { ArrowLeft } from "lucide-react";
 import CusTable from "../../components/CusTable";
-import ConfirmDeleteModal from "../../components/modals/ConfirmDeleteModal";
+import MoveStockModal from "./modals/MoveStockModal";
+import AdjustStockModal from "./modals/AdjustStockModal";
 
 export default function SkuDetailPage() {
   const { skuId } = useParams();
@@ -25,8 +26,11 @@ export default function SkuDetailPage() {
   const [holdNotes, setHoldNotes] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
-  const [showDelete, setShowDelete] = useState(false);
-  const [selectedHold, setSelectedHold] = useState(null);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [movePrefill, setMovePrefill] = useState(null);
+
+  const [openAdjust, setOpenAdjust] = useState(false);
+  const [openMove, setOpenMove] = useState(false);
 
   useEffect(() => {
     if (skuId) {
@@ -108,24 +112,6 @@ export default function SkuDetailPage() {
     setHoldReason("QUALITY_CHECK");
     setHoldNotes("");
     setShowHoldModal(true); // ✅ correct
-  };
-  const handleDeleteHold = async () => {
-    try {
-      setActionLoading(true);
-      await http.delete(`/inventory-holds/${selectedHold.id}`);
-      toast.success("Inventory hold deleted");
-      setShowDelete(false);
-      fetchInventoryData();
-    } catch (e) {
-      toast.error("Failed to delete inventory hold");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const openDeleteHold = (row) => {
-    setSelectedHold(row);
-    setShowDelete(true);
   };
 
   // Define columns for the inventory locations table
@@ -216,15 +202,24 @@ export default function SkuDetailPage() {
             Hold
           </button>
 
-          {/* DELETE button – ONLY when QC_HOLD */}
-          {/* {r.status === "QC_HOLD" && (
-            <button
-              onClick={() => openDeleteHold(r)}
-              className="rounded bg-red-600 px-3 py-1 text-sm text-white"
-            >
-              Delete
-            </button>
-          )} */}
+          <button
+            onClick={() => {
+              setMovePrefill(r);
+              setShowMoveModal(true);
+            }}
+            className="rounded bg-blue-600 px-3 py-1 text-sm text-white"
+          >
+            Move Stock
+          </button>
+          <button
+            onClick={() => {
+              setSelectedInventory(r); // inventory object
+              setOpenAdjust(true);
+            }}
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white"
+          >
+            Adjust Stock
+          </button>
         </div>
       ),
     },
@@ -610,14 +605,24 @@ export default function SkuDetailPage() {
           </div>
         </div>
       )}
+      <MoveStockModal
+        open={showMoveModal}
+        onClose={() => {
+          setShowMoveModal(false);
+          setMovePrefill(null);
+        }}
+        initialData={movePrefill}
+        onSuccess={fetchInventoryData}
+      />
 
-      <ConfirmDeleteModal
-        open={showDelete}
-        title="Delete Inventory Hold"
-        message="Hold must be released before deleting. Are you sure?"
-        loading={actionLoading}
-        onClose={() => setShowDelete(false)}
-        onConfirm={handleDeleteHold}
+      <AdjustStockModal
+        open={openAdjust}
+        onClose={() => {
+          setOpenAdjust(false);
+          setSelectedInventory(null);
+        }}
+        initialData={selectedInventory}
+        onSuccess={fetchInventoryData}
       />
     </div>
   );

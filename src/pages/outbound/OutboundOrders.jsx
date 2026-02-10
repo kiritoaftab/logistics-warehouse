@@ -308,7 +308,7 @@ const OutboundOrders = () => {
               Bulk Allocate
             </button>
             <button
-              onClick={() => navigate("/saleOrderCreate/new")}
+              onClick={() => navigate("/outbound/saleOrderCreate/new")}
               className="px-4 py-2 rounded-md text-sm bg-blue-600 text-white"
             >
               + Create Sales Order

@@ -10,10 +10,12 @@ const PaginatedClientDropdown = ({
   limit = 10,
   disabled = false,
   enableSearch = false,
+  selectedLabel,
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedClient, setSelectedClient] = useState(null);
 
   const [clients, setClients] = useState([]);
   const [pagination, setPagination] = useState({
@@ -70,7 +72,33 @@ const PaginatedClientDropdown = ({
     if (open) loadPage(1);
   }, [open, search]);
 
-  const selected = clients.find((c) => String(c.id) === String(value));
+  useEffect(() => {
+    if (value && !selectedClient) {
+      setSelectedClient({
+        id: value,
+        client_name: placeholder,
+        client_code: "",
+      });
+    }
+  }, [value]);
+
+  useEffect(() => {
+    if (!value || selectedClient) return;
+
+    const loadClientById = async () => {
+      try {
+        const res = await http.get(`/clients/${value}`);
+        setSelectedClient(res?.data?.data);
+      } catch (e) {
+        console.error("Failed to load client by id");
+      }
+    };
+
+    loadClientById();
+  }, [value]);
+
+  const selected =
+    clients.find((c) => String(c.id) === String(value)) || selectedClient;
 
   return (
     <div className="relative">
@@ -117,6 +145,7 @@ const PaginatedClientDropdown = ({
                     className="w-full px-3 py-2 text-left hover:bg-gray-50"
                     onClick={() => {
                       onChange(c.id, c);
+                      setSelectedClient(c);
                       setOpen(false);
                     }}
                   >

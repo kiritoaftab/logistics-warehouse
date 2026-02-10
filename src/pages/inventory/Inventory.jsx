@@ -69,7 +69,7 @@ const Inventory = () => {
                 <RefreshCcw size={16} />
                 Cycle Count
               </button>
-              <button
+              {/* <button
                 onClick={() => setOpenMove(true)}
                 className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700"
               >
@@ -82,7 +82,7 @@ const Inventory = () => {
               >
                 <SlidersHorizontal size={16} />
                 Adjust Stock
-              </button>
+              </button> */}
             </>
           }
         />
