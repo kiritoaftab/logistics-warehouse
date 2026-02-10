@@ -7,7 +7,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
-import InventoryHolds from "./InventoryHolds";
+import InventoryHolds from "./components/tabs/inventoryholds/InventoryHoldsTab";
 import StockBySkuTab from "./components/tabs/stockBySku/StockBySkuTab";
 import TransactionsTab from "./components/tabs/transactions/TransactionsTab";
 import StockByLocationTab from "./components/tabs/stockByLocation/StockByLocationTab";

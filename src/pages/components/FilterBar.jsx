@@ -2,6 +2,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 
+const normalizeOption = (opt) => {
+  if (typeof opt === "string") {
+    return { label: opt, value: opt };
+  }
+  return opt;
+};
+
 const useOutsideClick = (ref, handler) => {
   useEffect(() => {
     const listener = (e) => {
@@ -25,34 +32,40 @@ const SelectBox = ({
   const wrapRef = useRef(null);
   useOutsideClick(wrapRef, () => isOpen && onToggle(false));
 
+  const normalizedOptions = options.map(normalizeOption);
+
+  const selectedLabel =
+    normalizedOptions.find((opt) => opt.value === value)?.label || "Select";
+
   return (
     <div
       ref={wrapRef}
       className={`relative flex w-full flex-col gap-1 ${className}`}
     >
-      {" "}
       <span className="text-[11px] font-medium text-gray-500">{label}</span>
+
       <button
         type="button"
         onClick={() => onToggle(!isOpen)}
         className="flex w-full items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
       >
-        <span className="truncate">{value}</span>
+        <span className="truncate">{selectedLabel}</span>
         <ChevronDown size={16} className="text-gray-400" />
       </button>
+
       {isOpen && (
-        <div className="absolute top-full mt-2 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm z-50">
-          {options.map((opt) => (
+        <div className="absolute top-full mt-2 w-full rounded-md border border-gray-200 bg-white shadow-sm z-50">
+          {normalizedOptions.map((opt) => (
             <button
-              key={opt}
+              key={String(opt.value)} // ✅ always safe
               type="button"
               onClick={() => {
-                onSelect(opt);
+                onSelect(opt.value); // always pass VALUE
                 onToggle(false);
               }}
               className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
             >
-              {opt}
+              {opt.label}
             </button>
           ))}
         </div>
@@ -81,6 +94,7 @@ const SearchBox = ({
 
 const FilterBar = ({
   filters = [],
+  children,
   showActions = true,
   onFilterChange,
   onReset,
@@ -121,8 +135,11 @@ const FilterBar = ({
               />
             );
           })}
+
+          {children}
+
           {showActions && (
-            <div className=" flex items-center gap-3 pt-4">
+            <div className="flex items-center gap-3 pt-4">
               <button
                 type="button"
                 onClick={onApply}

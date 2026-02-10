@@ -6,10 +6,14 @@ import { useNavigate } from "react-router-dom";
 import http from "../../api/http";
 import { useToast } from "../components/toast/ToastProvider";
 import { getStatusBadgeColor } from "../components/helper";
+import PaginatedEntityDropdown from "../inbound/components/asnform/common/PaginatedEntityDropdown";
+import { matchDateOption } from "./components/helper";
+import { getWarehouses } from "../inbound/components/api/masters.api";
 
 const Putaway = () => {
   const navigate = useNavigate();
   const toast = useToast();
+  const [warehouses, setWarehouses] = useState([]);
 
   const [putawayData, setPutawayData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,9 +32,8 @@ const Putaway = () => {
     limit: 5,
   });
 
-  // State for dynamic filter options
   const [filterOptions, setFilterOptions] = useState({
-    warehouses: ["All"],
+    warehouses: [{ label: "All", value: "All" }],
     clients: ["All"],
     statuses: [
       "All",
@@ -44,7 +47,6 @@ const Putaway = () => {
     zones: ["All"],
   });
 
-  // State for assign modal
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [users, setUsers] = useState([]);
@@ -55,9 +57,8 @@ const Putaway = () => {
   });
   const [assigning, setAssigning] = useState(false);
 
-  // Filter state
   const [filterValues, setFilterValues] = useState({
-    dateRange: "Today",
+    dateRange: "All",
     warehouse: "All",
     client: "All",
     status: "All",
@@ -68,7 +69,6 @@ const Putaway = () => {
 
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Bulk modal
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [bulkForm, setBulkForm] = useState({
     user_id: "",
@@ -76,18 +76,11 @@ const Putaway = () => {
   });
   const [bulkAssigning, setBulkAssigning] = useState(false);
 
-  // Fetch putaway data and users
-  useEffect(() => {
-    fetchPutawayData();
-    fetchUsers();
-    fetchLocations();
-  }, []);
-
   const fetchPutawayData = async () => {
     try {
       setLoading(true);
 
-      const warehouseId = 1; // Default warehouse
+      const warehouseId = 1;
       const response = await http.get(
         `/grn-lines/?warehouse_id=${warehouseId}&page=1&limit=${pagination?.limit}`,
       );
@@ -105,7 +98,6 @@ const Putaway = () => {
     }
   };
 
-  // Fetch users for assignment
   const fetchUsers = async () => {
     try {
       const response = await http.get("/users?role=operator,supervisor");
@@ -118,12 +110,10 @@ const Putaway = () => {
     }
   };
 
-  // Fetch locations for assignment
   const fetchLocations = async () => {
     try {
       const response = await http.get("/locations?page=1&limit=100");
       if (response.data.success) {
-        // Filter only active and putawayable locations
         const filteredLocations = response.data.data.locations.filter(
           (location) =>
             location.is_putawayable === true && location.is_active === true,
@@ -136,11 +126,34 @@ const Putaway = () => {
     }
   };
 
-  // Extract filter options from data
+  const getwhereHouses = async () => {
+    const data = await getWarehouses();
+    setWarehouses(data);
+  };
+
+  useEffect(() => {
+    getwhereHouses();
+    fetchPutawayData();
+    fetchUsers();
+    fetchLocations();
+  }, []);
+
+  useEffect(() => {
+    setFilterOptions((prev) => ({
+      ...prev,
+      warehouses: [
+        { label: "All", value: "All" },
+        ...warehouses.map((w) => ({
+          label: w.warehouse_name,
+          value: w.id,
+        })),
+      ],
+    }));
+  }, [warehouses]);
+
   const extractFilterOptions = (data) => {
     if (!data || data.length === 0) return;
 
-    // Extract unique zones from destination locations
     const zones = [
       "All",
       ...new Set(
@@ -151,7 +164,6 @@ const Putaway = () => {
       ),
     ];
 
-    // Extract unique clients
     const clients = [
       "All",
       ...new Set(
@@ -166,7 +178,6 @@ const Putaway = () => {
     }));
   };
 
-  // Calculate statistics from putaway data
   const calculateStats = (data) => {
     const now = new Date();
     let pendingCount = 0;
@@ -184,7 +195,6 @@ const Putaway = () => {
         case "ASSIGNED":
         case "IN_PROGRESS":
           inProgressCount++;
-          // Check if task is aging (> 4 hours)
           const createdAt = new Date(task.created_at);
           const hoursDiff = (now - createdAt) / (1000 * 60 * 60);
           if (hoursDiff > 4) {
@@ -208,7 +218,6 @@ const Putaway = () => {
     });
   };
 
-  // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     const date = new Date(dateString);
@@ -218,7 +227,6 @@ const Putaway = () => {
     });
   };
 
-  // Format putaway status for display
   const formatPutawayStatus = (status) => {
     const statusMap = {
       PENDING: "Pending",
@@ -230,7 +238,6 @@ const Putaway = () => {
     return statusMap[status] || status || "Pending";
   };
 
-  // Format destination location
   const formatDestinationLocation = (location) => {
     if (!location) return "-";
 
@@ -243,7 +250,6 @@ const Putaway = () => {
     return "-";
   };
 
-  // Format assigned user name
   const formatAssigneeName = (assignee) => {
     if (!assignee) return "-";
     return (
@@ -253,7 +259,6 @@ const Putaway = () => {
     );
   };
 
-  // Handle start/assign putaway task
   const handleStartPutaway = (task) => {
     const status = task.putaway_status?.toUpperCase();
 
@@ -269,12 +274,10 @@ const Putaway = () => {
       status === "IN_PROGRESS" ||
       status === "COMPLETED"
     ) {
-      // Navigate to putaway details for all other statuses
       navigate(`/putawaydetails/${task.id}`, { state: { task } });
     }
   };
 
-  // Handle assign task API call
   const handleAssignTask = async () => {
     if (!selectedTask) return;
 
@@ -299,7 +302,7 @@ const Putaway = () => {
         toast.success("Putaway task assigned successfully!");
         setAssignModalOpen(false);
         setSelectedTask(null);
-        fetchPutawayData(); // Refresh data
+        fetchPutawayData();
       } else {
         toast.error(response.data.message || "Failed to assign task");
       }
@@ -313,7 +316,6 @@ const Putaway = () => {
     }
   };
 
-  // Handle view task details
   const handleViewTask = (task) => {
     navigate(`/putawaydetails/${task.id}`, { state: { task } });
   };
@@ -327,15 +329,16 @@ const Putaway = () => {
     setBulkAssignOpen(true);
   };
 
-  // Handle filter change
   const handleFilterChange = (key, value) => {
-    setFilterValues((prev) => ({ ...prev, [key]: value }));
+    setFilterValues((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
   };
 
-  // Handle reset filters
   const handleResetFilters = () => {
     setFilterValues({
-      dateRange: "Today",
+      dateRange: "All",
       warehouse: "All",
       client: "All",
       status: "All",
@@ -345,7 +348,6 @@ const Putaway = () => {
     });
   };
 
-  // Filters configuration
   const filters = [
     {
       key: "dateRange",
@@ -353,23 +355,19 @@ const Putaway = () => {
       label: "Date Range",
       value: filterValues.dateRange,
       options: ["Today", "Yesterday", "Last 7 Days", "This Month", "All"],
-      className: "w-[140px]",
     },
     {
       key: "warehouse",
       type: "select",
       label: "Warehouse",
       value: filterValues.warehouse,
-      options: filterOptions.warehouses,
-      className: "w-[140px]",
-    },
-    {
-      key: "client",
-      type: "select",
-      label: "Client",
-      value: filterValues.client,
-      options: filterOptions.clients,
-      className: "w-[140px]",
+      options: [
+        { label: "All", value: "All" },
+        ...warehouses.map((w) => ({
+          label: w.warehouse_name,
+          value: w.id,
+        })),
+      ],
     },
     {
       key: "status",
@@ -405,9 +403,7 @@ const Putaway = () => {
     },
   ];
 
-  // Filter data based on filter values
   const filteredData = putawayData.filter((task) => {
-    // Search filter
     if (filterValues.search) {
       const searchLower = filterValues.search.toLowerCase();
       const matchesSearch =
@@ -420,7 +416,6 @@ const Putaway = () => {
       if (!matchesSearch) return false;
     }
 
-    // Status filter
     if (filterValues.status !== "All") {
       const statusMap = {
         Pending: "PENDING",
@@ -435,7 +430,6 @@ const Putaway = () => {
       }
     }
 
-    // Zone filter
     if (filterValues.zone !== "All") {
       const zoneLetter = filterValues.zone.replace("Zone ", "").trim();
       if (task.destination_location?.zone !== zoneLetter) {
@@ -443,7 +437,6 @@ const Putaway = () => {
       }
     }
 
-    // Source filter
     if (filterValues.source !== "All") {
       if (filterValues.source === "Dock") {
         if (!task.source_location?.location_code?.includes("DOCK")) {
@@ -460,10 +453,18 @@ const Putaway = () => {
       }
     }
 
+    if (filterValues?.warehouse !== "All") {
+      return (
+        filterValues?.warehouse === task?.destination_location?.warehouse_id
+      );
+    }
+
+    if (filterValues?.dateRange !== "All") {
+      return matchDateOption(filterValues?.dateRange, task?.updated_at);
+    }
     return true;
   });
 
-  // Format location for dropdown
   const formatLocationOption = (location) => {
     let displayText = location.location_code;
     if (location.zone && location.aisle && location.rack && location.level) {
@@ -475,7 +476,6 @@ const Putaway = () => {
     return displayText;
   };
 
-  // Table columns
   const columns = [
     {
       key: "select",
@@ -489,7 +489,6 @@ const Putaway = () => {
         />
       ),
     },
-
     {
       key: "taskId",
       title: "Task ID",
@@ -701,7 +700,22 @@ const Putaway = () => {
         onFilterChange={handleFilterChange}
         onReset={handleResetFilters}
         onApply={() => console.log("Filters applied:", filterValues)}
-      />
+      >
+        <div>
+          <p className="text-xs text-gray-500">Client</p>
+          <PaginatedEntityDropdown
+            endpoint="/clients"
+            listKey="clients"
+            value={filterValues.client}
+            onChange={(id) => handleFilterChange("client", id)}
+            enableSearch
+            renderItem={(c) => ({
+              title: c.client_name,
+              subtitle: c.client_code,
+            })}
+          />
+        </div>
+      </FilterBar>
 
       {/* Status Cards */}
       <div className="mb-4 grid grid-cols-5 gap-4">

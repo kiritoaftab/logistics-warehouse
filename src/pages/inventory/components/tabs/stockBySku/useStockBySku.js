@@ -41,7 +41,7 @@ export function useStockBySku(toast) {
   });
 
   const [f, setF] = useState({
-    warehouse: "All",
+    warehouse: "1",
     client: "All",
     skuSearch: "",
     stockStatus: "All",
@@ -80,10 +80,12 @@ export function useStockBySku(toast) {
         const list = res.data.data || [];
         const options = [
           { value: "All", label: "All Warehouses" },
-          ...list.map((w) => ({
-            value: String(w.id),
-            label: `${w.warehouse_code} - ${w.warehouse_name}`,
-          })),
+          ...list.map((w) => {
+          return {
+              value: String(w.id),
+              label: `${w.warehouse_code} - ${w.warehouse_name}`,
+            };
+        }),
         ];
         setWarehouses(options);
       }
