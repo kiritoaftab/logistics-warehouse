@@ -4,145 +4,126 @@ import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
 import FilterBar from "../components/FilterBar";
 import CusTable from "../components/CusTable";
+import Pagination from "../components/Pagination";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../components/toast/ToastProvider";
+import { useSalesOrders } from "./components/useSalesOrders";
 
 const OutboundOrders = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [selectedRows, setSelectedRows] = useState([]);
-  const [filterState, setFilterState] = useState({
-    dateRange: "Today",
-    status: "All Statuses",
-    priority: "All",
-    carrier: "All",
-    search: "",
-  });
+  
+  const {
+    loading,
+    f,
+    setF,
+    filters,
+    data,
+    stats: apiStats,
+    pagination,
+    refresh,
+    handlePageChange,
+  } = useSalesOrders(toast);
+
+  // Calculate stats from API data
+  const calculatedStats = useMemo(() => {
+    // Initialize counters
+    const statusCounts = {
+      DRAFT: 0,
+      CONFIRMED: 0,
+      ALLOCATED: 0,
+      PICKING: 0,
+      PICKED: 0,
+      PACKING: 0,
+      PACKED: 0,
+      SHIPPED: 0,
+      DELIVERED: 0,
+      CANCELLED: 0,
+    };
+
+    let totalOrders = 0;
+    let pendingAllocation = 0;
+    let pickingPending = 0;
+    let packedReady = 0;
+    let shippedToday = 0;
+    let slaBreachRisk = 0;
+
+    // Process each order
+    data.forEach(order => {
+      totalOrders++;
+      const status = order.status;
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+
+      // Count pending allocation (CONFIRMED status)
+      if (status === 'CONFIRMED') {
+        pendingAllocation++;
+      }
+
+      // Count picking pending (ALLOCATED status)
+      if (status === 'ALLOCATED') {
+        pickingPending++;
+      }
+
+      // Count packed ready (PACKED status)
+      if (status === 'PACKED') {
+        packedReady++;
+      }
+
+      // Count shipped today (check if shipped today)
+      if (status === 'SHIPPED' && order.shipped_at) {
+        const shippedDate = new Date(order.shipped_at);
+        const today = new Date();
+        if (shippedDate.toDateString() === today.toDateString()) {
+          shippedToday++;
+        }
+      }
+
+      // Check SLA breach risk (orders that are overdue or due soon)
+      if (order.sla_due_date) {
+        const dueDate = new Date(order.sla_due_date);
+        const now = new Date();
+        const hoursUntilDue = (dueDate - now) / (1000 * 60 * 60);
+        
+        // If due within 24 hours and not completed
+        if (hoursUntilDue <= 24 && !['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(status)) {
+          slaBreachRisk++;
+        }
+      }
+    });
+
+    // Also add stats from API stats endpoint if available
+    if (apiStats && apiStats.length > 0) {
+      apiStats.forEach(stat => {
+        if (stat.status === 'PICKED') {
+          // You could update counts based on API stats
+        }
+      });
+    }
+
+    return [
+      { title: "Total Orders", value: totalOrders.toString() },
+      { title: "Pending Allocation", value: pendingAllocation.toString() },
+      { title: "Picking Pending", value: pickingPending.toString() },
+      { title: "Packed Ready", value: packedReady.toString() },
+      { title: "Shipped Today", value: shippedToday.toString() },
+      { title: "SLA Breach Risk", value: slaBreachRisk.toString() },
+    ];
+  }, [data, apiStats]);
 
   const handleFilterChange = (key, value) => {
-    setFilterState((p) => ({ ...p, [key]: value }));
+    setF(prev => ({ ...prev, [key]: value, page: 1 })); // Reset to page 1 on filter change
   };
 
   const handleReset = () => {
-    setFilterState({
-      dateRange: "Today",
-      status: "All Statuses",
-      priority: "All",
-      carrier: "All",
-      search: "",
+    setF({
+      warehouse_id: "All",
+      client_id: "All",
+      status: "All",
+      page: 1,
+      limit: 10,
     });
   };
-
-  const handleApply = () => {
-    console.log("apply filters", filterState);
-    // later: call API using filterState
-  };
-
-  const stats = [
-    { title: "Total Orders", value: "152" },
-    { title: "Pending Allocation", value: "24" },
-    { title: "Picking Pending", value: "38" },
-    { title: "Packed Ready", value: "12" },
-    { title: "Shipped Today", value: "45" },
-    { title: "SLA Breach Risk", value: "3" },
-  ];
-
-  const filters = [
-    {
-      key: "dateRange",
-      type: "select",
-      label: "Date Range",
-      value: filterState.dateRange,
-      options: ["Today", "Yesterday", "Last 7 Days", "Last 30 Days"],
-      className: "w-[160px]",
-    },
-    {
-      key: "status",
-      type: "select",
-      label: "Status",
-      value: filterState.status,
-      options: ["All Statuses", "Confirmed", "Allocated", "Picking", "Packed"],
-      className: "w-[160px]",
-    },
-    {
-      key: "priority",
-      type: "select",
-      label: "Priority",
-      value: filterState.priority,
-      options: ["All", "High", "Normal"],
-      className: "w-[160px]",
-    },
-    {
-      key: "carrier",
-      type: "select",
-      label: "Carrier",
-      value: filterState.carrier,
-      options: ["All", "DHL", "FedEx", "UPS Freight", "USPS"],
-      className: "w-[160px]",
-    },
-    {
-      key: "search",
-      type: "search",
-      label: "Search",
-      value: filterState.search,
-      placeholder: "Order No, Customer, Reference",
-      className: "flex-1 min-w-[260px]",
-    },
-  ];
-
-  const data = useMemo(
-    () => [
-      {
-        id: "SO-2023-1001",
-        orderNo: "SO-2023-1001",
-        ref: "PO-9981",
-        client: "Acme Corp",
-        shipTo: "Tech Retailers Inc.",
-        shipToSub: "Chicago, IL",
-        lines: 12,
-        units: 150,
-        priority: "High",
-        slaDue: "Today, 04:00 PM",
-        status: "Confirmed",
-        allocation: "None",
-        carrier: "DHL",
-        actionLabel: "Allocate",
-      },
-      {
-        id: "SO-2023-1002",
-        orderNo: "SO-2023-1002",
-        ref: "-",
-        client: "Acme Corp",
-        shipTo: "Urban Outfitters",
-        shipToSub: "New York, NY",
-        lines: 5,
-        units: 24,
-        priority: "Normal",
-        slaDue: "Tomorrow, 10:00 AM",
-        status: "Allocated",
-        allocation: "Full",
-        carrier: "FedEx",
-        actionLabel: "Release",
-      },
-      {
-        id: "SO-2023-1003",
-        orderNo: "SO-2023-1003",
-        ref: "-",
-        client: "Globex",
-        shipTo: "Best Buy Store #22",
-        shipToSub: "Miami, FL",
-        lines: 45,
-        units: 1200,
-        priority: "High",
-        slaDue: "Overdue 2h",
-        status: "Picking",
-        allocation: "Full",
-        carrier: "UPS Freight",
-        actionLabel: "Track",
-      },
-    ],
-    [],
-  );
 
   const Pill = ({ text, tone = "gray" }) => {
     const map = {
@@ -151,6 +132,8 @@ const OutboundOrders = () => {
       green: "bg-green-50 text-green-700",
       orange: "bg-orange-50 text-orange-700",
       red: "bg-red-50 text-red-700",
+      yellow: "bg-yellow-50 text-yellow-700",
+      purple: "bg-purple-50 text-purple-700",
     };
     return (
       <span
@@ -159,6 +142,51 @@ const OutboundOrders = () => {
         {text}
       </span>
     );
+  };
+
+  const getStatusTone = (status) => {
+    switch(status) {
+      case 'DRAFT': return 'gray';
+      case 'CONFIRMED': return 'blue';
+      case 'ALLOCATED': return 'green';
+      case 'PICKING': return 'orange';
+      case 'PICKED': return 'yellow';
+      case 'PACKING': return 'purple';
+      case 'PACKED': return 'purple';
+      case 'SHIPPED': return 'green';
+      case 'DELIVERED': return 'green';
+      case 'CANCELLED': return 'red';
+      default: return 'gray';
+    }
+  };
+
+  const getAllocationTone = (status) => {
+    switch(status) {
+      case 'FULL': return 'green';
+      case 'PARTIAL': return 'orange';
+      case 'NONE': return 'gray';
+      default: return 'gray';
+    }
+  };
+
+  const getPriorityTone = (priority) => {
+    switch(priority) {
+      case 'HIGH': return 'red';
+      case 'MEDIUM': return 'orange';
+      case 'NORMAL': return 'blue';
+      default: return 'gray';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const columns = useMemo(
@@ -186,7 +214,7 @@ const OutboundOrders = () => {
         ),
       },
       {
-        key: "orderNo",
+        key: "order_no",
         title: "Order No",
         render: (row) => (
           <div>
@@ -194,101 +222,123 @@ const OutboundOrders = () => {
               className="text-blue-600 hover:underline font-medium"
               onClick={() => navigate(`/orderDetails/${row.id}`)}
             >
-              {row.orderNo}
+              {row.order_no}
             </button>
-            <div className="text-xs text-gray-400">Ref: {row.ref}</div>
+            <div className="text-xs text-gray-400">Ref: {row.reference_no || '—'}</div>
           </div>
         ),
       },
-      { key: "client", title: "Client" },
       {
-        key: "shipTo",
-        title: "Ship-to",
+        key: "client",
+        title: "Client",
+        render: (row) => row.client?.client_name || '—',
+      },
+      {
+        key: "customer",
+        title: "Customer",
         render: (row) => (
           <div>
             <div className="text-sm font-semibold text-gray-900">
-              {row.shipTo}
+              {row.customer_name}
             </div>
-            <div className="text-xs text-gray-500">{row.shipToSub}</div>
+            <div className="text-xs text-gray-500">{row.ship_to_city}</div>
           </div>
         ),
       },
-      { key: "lines", title: "Lines" },
-      { key: "units", title: "Units" },
+      {
+        key: "total_lines",
+        title: "Lines",
+        render: (row) => row.total_lines || 0,
+      },
+      {
+        key: "total_ordered_units",
+        title: "Units",
+        render: (row) => parseFloat(row.total_ordered_units || 0).toFixed(0),
+      },
       {
         key: "priority",
         title: "Priority",
         render: (row) => (
           <Pill
             text={row.priority}
-            tone={row.priority === "High" ? "orange" : "blue"}
+            tone={getPriorityTone(row.priority)}
           />
         ),
       },
       {
-        key: "slaDue",
+        key: "sla_due_date",
         title: "SLA Due",
-        render: (row) => (
-          <span
-            className={
-              String(row.slaDue).toLowerCase().includes("overdue")
-                ? "text-red-500 font-medium"
-                : ""
-            }
-          >
-            {row.slaDue}
-          </span>
-        ),
+        render: (row) => {
+          const dueDate = new Date(row.sla_due_date);
+          const now = new Date();
+          const hoursUntilDue = (dueDate - now) / (1000 * 60 * 60);
+          
+          let displayText = formatDate(row.sla_due_date);
+          let isOverdue = false;
+          
+          if (hoursUntilDue <= 0 && !['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(row.status)) {
+            displayText = `Overdue ${Math.abs(Math.round(hoursUntilDue))}h`;
+            isOverdue = true;
+          } else if (hoursUntilDue <= 24) {
+            displayText = `${Math.round(hoursUntilDue)}h left`;
+          }
+          
+          return (
+            <span className={isOverdue ? "text-red-500 font-medium" : ""}>
+              {displayText}
+            </span>
+          );
+        },
       },
       {
         key: "status",
         title: "Status",
-        render: (row) => {
-          const tone =
-            row.status === "Allocated"
-              ? "green"
-              : row.status === "Picking"
-                ? "orange"
-                : "blue";
-          return <Pill text={row.status} tone={tone} />;
-        },
+        render: (row) => (
+          <Pill text={row.status} tone={getStatusTone(row.status)} />
+        ),
       },
       {
-        key: "allocation",
+        key: "allocation_status",
         title: "Allocation",
         render: (row) => (
           <Pill
-            text={row.allocation}
-            tone={
-              row.allocation === "Full"
-                ? "green"
-                : row.allocation === "Partial"
-                  ? "orange"
-                  : "gray"
-            }
+            text={row.allocation_status}
+            tone={getAllocationTone(row.allocation_status)}
           />
         ),
       },
-      { key: "carrier", title: "Carrier" },
+      {
+        key: "carrier",
+        title: "Carrier",
+        render: (row) => row.carrier || '—',
+      },
       {
         key: "actions",
         title: "Actions",
-        render: (row) => (
-          <div className="flex items-center justify-end gap-2">
-            <button
-              onClick={() => toast.info("feature coming soon!")}
-              className="px-3 py-1.5 text-xs rounded-md border bg-white"
-            >
-              {row.actionLabel}
-            </button>
-            <button
-              onClick={() => navigate(`/orderDetails/:${row.id}`)}
-              className="px-2 py-1.5 rounded-md border bg-white"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-          </div>
-        ),
+        render: (row) => {
+          let actionLabel = "View";
+          if (row.status === 'CONFIRMED') actionLabel = "Allocate";
+          if (row.status === 'ALLOCATED') actionLabel = "Pick";
+          if (row.status === 'PICKED') actionLabel = "Pack";
+          if (row.status === 'PACKED') actionLabel = "Ship";
+          
+          return (
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => toast.info(`Action: ${actionLabel}`)}
+                className="px-3 py-1.5 text-xs rounded-md border bg-white"
+              >
+                {actionLabel}
+              </button>
+              <button
+                onClick={() => navigate(`/orderDetails/${row.id}`)}
+                className="px-2 py-1.5 rounded-md border bg-white"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+            </div>
+          );
+        },
       },
     ],
     [data, selectedRows],
@@ -317,25 +367,67 @@ const OutboundOrders = () => {
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-        {stats.map((s) => (
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+        {calculatedStats.map((s) => (
           <StatCard key={s.title} title={s.title} value={s.value} />
         ))}
       </div>
 
-      <div className="mt-4">
+      {/* Filters */}
+      <div className="mb-6">
         <FilterBar
           filters={filters}
           showActions
           onFilterChange={handleFilterChange}
           onReset={handleReset}
-          onApply={handleApply}
-        />{" "}
+          onApply={refresh}
+        />
       </div>
 
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <CusTable columns={columns} data={data} />
-      </div>
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+            <div className="text-gray-500">Loading orders...</div>
+          </div>
+        </div>
+      ) : data.length === 0 ? (
+        <div className="flex justify-center items-center h-64 flex-col">
+          <div className="text-gray-500 mb-2 text-lg">
+            No orders found
+          </div>
+          <button
+            onClick={refresh}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+          >
+            Refresh
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Order Count */}
+          <div className="text-sm text-gray-500 mb-2">
+            Showing {data.length} of {pagination.total} orders • Page {pagination.page} of {pagination.pages}
+          </div>
+
+          {/* Table */}
+          <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+            <CusTable columns={columns} data={data} />
+          </div>
+
+          {/* Pagination */}
+          {pagination.pages > 1 && (
+            <div className="mt-4">
+              <Pagination
+                pagination={pagination}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

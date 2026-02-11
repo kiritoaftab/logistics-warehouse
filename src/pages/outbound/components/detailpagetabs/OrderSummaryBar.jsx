@@ -11,9 +11,9 @@ const OrderSummaryBar = ({ order }) => {
             <div className="text-xl font-semibold text-gray-900">
               {order.orderNo}
             </div>
-            <Pill text={order.status} tone="blue" />
-            <Pill text={order.allocationBadge} tone="blue" />
-            <Pill text={order.priorityBadge} tone="orange" />
+            <Pill text={order.status} tone={order.statusTone || "gray"} />
+            <Pill text={order.allocationBadge} tone={order.allocationTone || "gray"} />
+            <Pill text={order.priorityBadge} tone={order.priorityTone || "gray"} />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">

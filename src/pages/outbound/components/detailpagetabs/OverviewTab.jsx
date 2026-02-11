@@ -2,41 +2,94 @@
 import KeyValueCard from "../../../inbound/components/asndetails/KeyValueCard";
 import ShipmentJourney from "../../../inbound/components/asndetails/ShipmentJourney";
 
-const steps = [
-  { no: 1, label: "Created", sub: "Oct 24, 10:00", state: "done" },
-  { no: 2, label: "Confirmed", sub: "Oct 24, 10:05", state: "done" },
-  { no: 3, label: "Allocating", sub: "In Progress", state: "active" },
-  { no: 4, label: "Picking", sub: "", state: "todo" },
-  { no: 5, label: "Packing", sub: "", state: "todo" },
-  { no: 6, label: "Shipped", sub: "", state: "todo" },
-];
+const OverviewTab = ({ order, onEditShipTo, onEditShipping }) => {
+  // Create shipment journey steps based on order status
+  const getJourneySteps = () => {
+    const steps = [
+      { 
+        label: "Created", 
+        time: order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : "Pending",
+        state: "done" 
+      },
+      { 
+        label: "Confirmed", 
+        time: order.confirmed_at ? new Date(order.confirmed_at).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : "Pending",
+        state: order.confirmed_at ? "done" : "todo" 
+      },
+      { 
+        label: "Allocated", 
+        time: order.allocated_at ? new Date(order.allocated_at).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : "Pending",
+        state: order.allocated_at ? "done" : "todo" 
+      },
+      { 
+        label: "Picked", 
+        time: order.picking_completed_at ? new Date(order.picking_completed_at).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : "Pending",
+        state: order.picking_completed_at ? "done" : 
+               order.picking_started_at ? "active" : "todo" 
+      },
+      { 
+        label: "Packed", 
+        time: order.packing_completed_at ? new Date(order.packing_completed_at).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : "Pending",
+        state: order.packing_completed_at ? "done" : 
+               order.packing_started_at ? "active" : "todo" 
+      },
+      { 
+        label: "Shipped", 
+        time: order.shipped_at ? new Date(order.shipped_at).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : "Pending",
+        state: order.shipped_at ? "done" : "todo" 
+      },
+    ];
+    return steps;
+  };
 
-// Map to ShipmentJourney format
-const journeySteps = steps.map((s) => ({
-  label: s.label,
-  time: s.sub || "Pending",
-  state: s.state, // "done" | "active" | "todo"
-}));
-
-const OverviewTab = ({ onEditShipTo, onEditShipping }) => {
   return (
     <div className="space-y-6">
-      <ShipmentJourney steps={journeySteps} />
+      <ShipmentJourney steps={getJourneySteps()} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <KeyValueCard
           title="Ship-to Details"
           onEdit={onEditShipTo}
           items={[
-            { label: "Company Name", value: "Tech Retailers Inc." },
-            { label: "Contact", value: "John Doe (+1 555-0123)" },
+            { label: "Name", value: order.ship_to_name },
+            { label: "Contact", value: `${order.customer_name} (${order.customer_phone})` },
             {
               label: "Address",
-              value: "123 Commerce Blvd, Suite 400\nNew York, NY, 10001",
+              value: `${order.ship_to_address_line1}\n${order.ship_to_address_line2 || ''}\n${order.ship_to_city}, ${order.ship_to_state} ${order.ship_to_pincode}\n${order.ship_to_country}`
             },
             {
-              label: "Instructions",
-              value: "Deliver to rear dock. Call security upon arrival.",
+              label: "Special Instructions",
+              value: order.special_instructions || "No special instructions"
             },
           ]}
         />
@@ -46,12 +99,12 @@ const OverviewTab = ({ onEditShipTo, onEditShipping }) => {
           onEdit={onEditShipping}
           items={[
             {
-              label: "Carrier Service",
-              value: "FedEx Express (Client Account)",
+              label: "Carrier",
+              value: order.carrier || "Not assigned"
             },
-            { label: "Service Level", value: "Overnight / Priority" },
-            { label: "Packaging", value: "Standard Carton" },
-            { label: "Tracking No", value: "Pending Generation" },
+            { label: "Service Level", value: order.carrier_service || "Standard" },
+            { label: "Tracking Number", value: order.tracking_number || "Pending" },
+            { label: "Reference No", value: order.reference_no || "—" },
           ]}
         />
       </div>

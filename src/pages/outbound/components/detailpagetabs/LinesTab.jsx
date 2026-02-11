@@ -4,72 +4,36 @@ import { Layers } from "lucide-react";
 import CusTable from "../../../components/CusTable";
 import { pillToneForLineStatus, Pill } from "../helpers";
 
-const LinesTab = () => {
-  const rows = useMemo(
-    () => [
-      {
-        id: "1",
-        sku: "SKU-10045",
-        name: "Wireless Mouse - Black",
-        requested: 50,
-        allocated: 50,
-        picked: 0,
-        packed: 0,
-        shipped: 0,
-        rule: "FIFO",
-        status: "Fully Allocated",
-      },
-      {
-        id: "2",
-        sku: "SKU-10299",
-        name: "Mechanical Keyboard",
-        requested: 20,
-        allocated: 10,
-        picked: 0,
-        packed: 0,
-        shipped: 0,
-        rule: "FIFO",
-        status: "Partial",
-      },
-      {
-        id: "3",
-        sku: "SKU-20441",
-        name: "USB-C Hub 4-Port",
-        requested: 10,
-        allocated: 0,
-        picked: 0,
-        packed: 0,
-        shipped: 0,
-        rule: "Batch",
-        status: "Pending",
-      },
-      {
-        id: "4",
-        sku: "SKU-30012",
-        name: "Monitor Stand",
-        requested: 5,
-        allocated: 5,
-        picked: 0,
-        packed: 0,
-        shipped: 0,
-        rule: "FEFO",
-        status: "Fully Allocated",
-      },
-      {
-        id: "5",
-        sku: "SKU-99102",
-        name: "Webcam 1080p",
-        requested: 35,
-        allocated: 0,
-        picked: 0,
-        packed: 0,
-        shipped: 0,
-        rule: "FIFO",
-        status: "No Stock",
-      },
-    ],
-    [],
-  );
+const LinesTab = ({ lines = [] }) => {
+  const formattedRows = useMemo(() => {
+    return lines.map(line => {
+      const allocatedQty = parseFloat(line.allocated_qty || 0);
+      const orderedQty = parseFloat(line.ordered_qty || 0);
+      const pickedQty = parseFloat(line.picked_qty || 0);
+      const packedQty = parseFloat(line.packed_qty || 0);
+      const shippedQty = parseFloat(line.shipped_qty || 0);
+      
+      let status = "Pending";
+      if (allocatedQty === 0) status = "No Stock";
+      else if (allocatedQty < orderedQty) status = "Partial";
+      else if (allocatedQty === orderedQty) status = "Fully Allocated";
+      
+      return {
+        id: line.id,
+        sku: line.sku?.sku_code || "—",
+        name: line.sku?.sku_name || "—",
+        requested: orderedQty.toFixed(2),
+        allocated: allocatedQty.toFixed(2),
+        picked: pickedQty.toFixed(2),
+        packed: packedQty.toFixed(2),
+        shipped: shippedQty.toFixed(2),
+        rule: line.allocation_rule || "FIFO",
+        status: status,
+        skuData: line.sku,
+        lineData: line,
+      };
+    });
+  }, [lines]);
 
   const columns = useMemo(
     () => [
@@ -109,9 +73,17 @@ const LinesTab = () => {
     [],
   );
 
+  if (lines.length === 0) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+        <div className="text-gray-500">No line items found</div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-      <CusTable columns={columns} data={rows} />
+      <CusTable columns={columns} data={formattedRows} />
     </div>
   );
 };
