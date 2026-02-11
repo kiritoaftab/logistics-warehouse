@@ -310,9 +310,11 @@ const CreateSalesOrder = () => {
       if (!isEdit) {
         await http.post("/sales-orders", payload);
         toast.success("Draft created");
+        navigate("/outbound");
       } else {
         await http.put(`/sales-orders/${id}`, payload);
         toast.success("Draft updated");
+        navigate("/outbound");
       }
     } catch (e) {
       toast.error(e.response?.data?.error || "Failed to save draft");
@@ -348,6 +350,7 @@ const CreateSalesOrder = () => {
 
       await http.post(`/sales-orders/${orderId}/confirm`);
       toast.success("Order confirmed");
+      navigate("/outbound");
     } catch (e) {
       toast.error(e.response?.data?.error || "Failed to confirm order");
     }

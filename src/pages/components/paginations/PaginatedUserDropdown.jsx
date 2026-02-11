@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import http from "../../../api/http";
 import Pagination from "../Pagination";
 import { createPortal } from "react-dom";
+import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 
 const PaginatedClientDropdown = ({
   value,
@@ -107,11 +108,16 @@ const PaginatedClientDropdown = ({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((s) => !s)}
-        className="w-full rounded-md border px-3 py-2 text-left text-sm"
+        className="w-full rounded-md border px-3 py-2 text-left text-sm flex justify-between items-center"
       >
-        {selected
-          ? `${selected.client_name} (${selected.client_code})`
-          : placeholder}
+        <span>
+          {selected
+            ? `${selected.client_name} (${selected.client_code})`
+            : placeholder}
+        </span>
+        <span className="ml-2 text-gray-400">
+          {open ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
+        </span>
       </button>
 
       {open &&

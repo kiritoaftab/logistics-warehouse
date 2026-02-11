@@ -6,8 +6,10 @@ import PickWaves from "./PickWaves";
 import PickTasks from "./PickTasks";
 import PickTaskDetail from "./PickTaskDetail";
 import PickExceptions from "./PickExceptions";
+import { useNavigate } from "react-router-dom";
 
 const Picking = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("waves");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
 
@@ -17,7 +19,10 @@ const Picking = () => {
         <Download size={16} />
         Export
       </button>
-      <button className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-white">
+      <button
+        onClick={() => navigate("/picking/createPickWavePage")}
+        className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+      >
         <Plus size={16} />
         Create Pick Wave
       </button>
