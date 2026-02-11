@@ -1,20 +1,25 @@
 // CreateSalesOrder.jsx
-import React, { useMemo, useState } from "react";
-import { Search, Trash2 } from "lucide-react";
+
+// routes
+// /sales-orders/new
+// /sales-orders/:id
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import FormPage from "../components/forms/FormPage";
 import FormCard from "../components/forms/FormCard";
 import FormGrid from "../components/forms/FormGrid";
-import {
-  InputField,
-  SelectField,
-  TextareaField,
-} from "../components/forms/Field";
+import { InputField } from "../components/forms/Field";
 import SummaryCard from "../components/forms/SummaryCard";
 import ChecklistCard from "../components/forms/ChecklistCard";
 import AttachmentsDropzone from "../components/forms/AttachmentsDropzone";
 import OrderLines from "./components/OrderLines";
+import { useNavigate, useParams } from "react-router-dom";
+import http from "@/api/http.js";
+import { validateSalesOrder } from "./components/helper";
+import { useToast } from "../components/toast/ToastProvider";
+import BasicInformationSection from "../inbound/components/asnform/BasicInformationSection";
+import ShipToCustomer from "./components/ShipToCustomer";
 
-// ---------- small reusable bits (can move to components later) ----------
 const Switch = ({ checked, onChange }) => (
   <button
     type="button"
@@ -46,19 +51,22 @@ const ToggleRow = ({ title, desc, checked, onChange, disabled }) => (
   </div>
 );
 
-// ----------------------------------------------------------------------
-
 const CreateSalesOrder = () => {
+  const { id } = useParams();
+  const isEdit = id !== "new";
+  const toast = useToast();
+  const navigate = useNavigate();
+
   const [header, setHeader] = useState({
-    warehouse: "WH-NYC-01",
-    client: "Acme Corp",
+    warehouse_id: null,
+    warehouse_name: "",
+    client_id: null,
+    client_name: "",
     orderRef: "",
-    orderDate: "10/25/2023, 02:30 PM",
-    priority: "Normal",
-    orderType: "Standard",
+    priority: "NORMAL",
+    orderType: "STANDARD",
     slaDueDate: "",
   });
-
   const [shipTo, setShipTo] = useState({
     name: "",
     phone: "",
@@ -70,44 +78,108 @@ const CreateSalesOrder = () => {
     gstin: "",
     instructions: "",
   });
-
   const [shipping, setShipping] = useState({
-    carrier: "Client Carrier",
-    serviceLevel: "Standard Ground",
-    packagingPreference: "Standard Carton",
-    codAmount: "0.00",
+    carrier: "",
+    serviceLevel: "",
+    packagingPreference: "",
+    codAmount: "",
     awbTracking: "",
   });
-
   const [alloc, setAlloc] = useState({
     autoAllocateOnConfirm: true,
     allowPartial: true,
     reserveInventory: true,
     allowSubstituteSku: false,
   });
-
-  const [lines, setLines] = useState([
-    {
-      id: "1",
-      sku: "SKU-9001",
-      name: "Wireless Headphones",
-      uom: "Each",
-      qty: 10,
-      allocationRule: "FIFO",
-      note: "",
-    },
-    {
-      id: "2",
-      sku: "",
-      name: "",
-      uom: "Each",
-      qty: 0,
-      allocationRule: "FIFO",
-      note: "",
-    },
-  ]);
-
+  const [lines, setLines] = useState([]);
   const [attachments, setAttachments] = useState([]);
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const basicInfoRef = useRef(null);
+  const [phoneError, setPhoneError] = useState("");
+  const [emailError, setEmailError] = useState("");
+
+  const hydrateForm = (data) => {
+    // HEADER
+    setHeader({
+      warehouse_id: data.warehouse_id || null,
+      warehouse_name: data.warehouse?.warehouse_name || "",
+      client_id: data.client_id || null,
+      client_name: data.client?.client_name || "",
+      orderRef: data.reference_no || "",
+      priority: data.priority || "NORMAL",
+      orderType: data.order_type || "STANDARD",
+      slaDueDate: data.sla_due_date ? data.sla_due_date.split("T")[0] : "",
+      notes: data.notes || "",
+    });
+
+    // SHIP TO
+    setShipTo({
+      name: data.ship_to_name || data.customer_name || "",
+      phone: data.ship_to_phone || data.customer_phone || "",
+      email: data.customer_email || "",
+      address1: data.ship_to_address_line1 || "",
+      address2: data.ship_to_address_line2 || "",
+      city: data.ship_to_city || "",
+      state: data.ship_to_state || "",
+      pincode: data.ship_to_pincode || "",
+      gstin: data.gstin || "",
+      instructions: data.special_instructions || "",
+    });
+
+    // SHIPPING
+    setShipping({
+      carrier: data.carrier || "",
+      serviceLevel: data.carrier_service || "",
+      packagingPreference: data.packaging_preference || "",
+      codAmount: data.cod_amount || "",
+      awbTracking: data.tracking_number || "",
+    });
+
+    // ORDER LINES
+    setLines(
+      data.lines?.map((l) => ({
+        id: l.id,
+        sku_id: l.sku_id,
+        sku: l.sku?.sku_code || "",
+        name: l.sku?.sku_name || "",
+        ordered_qty: Number(l.ordered_qty),
+        uom: l.uom || "EA",
+        allocation_rule: l.allocation_rule,
+        batch_preference: l.batch_preference,
+        expiry_date_min: l.expiry_date_min,
+        unit_price: Number(l.unit_price),
+        discount_percent: Number(l.discount_percent),
+        discount_amount: Number(l.discount_amount),
+        tax_percent: Number(l.tax_percent),
+        tax_amount: Number(l.tax_amount),
+        note: l.notes || "",
+        allocations: l.allocations || [],
+      })) || [],
+    );
+
+    // STATUS
+    setStatus(data.status || "DRAFT");
+  };
+
+  useEffect(() => {
+    if (!isEdit) return;
+
+    const fetchOrder = async () => {
+      try {
+        setLoading(true);
+        const { data } = await http.get(`/sales-orders/${id}`);
+        hydrateForm(data);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load sales order");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrder();
+  }, [id, isEdit]);
 
   const setH = (k, v) => setHeader((p) => ({ ...p, [k]: v }));
   const setS = (k, v) => setShipTo((p) => ({ ...p, [k]: v }));
@@ -120,8 +192,11 @@ const CreateSalesOrder = () => {
   }, [lines]);
 
   const readiness = useMemo(() => {
-    const okWarehouse = !!header.warehouse;
-    const okClient = !!header.client;
+    const basicData = basicInfoRef.current?.getData?.();
+
+    const okWarehouse = !!basicData?.warehouse_id;
+    const okClient = !!basicData?.client_id;
+
     const okShipTo = !!shipTo.name && !!shipTo.phone && !!shipTo.address1;
     const okLines = totals.totalLines > 0 && totals.totalUnits > 0;
 
@@ -136,7 +211,7 @@ const CreateSalesOrder = () => {
   const summaryData = useMemo(
     () => ({
       asnNumber: "Generated on save", // reuse SummaryCard, label stays
-      supplier: header.client || "-",
+      supplier: header.client_id || "-",
       expectedArrival: shipTo.name || "-",
       lines: totals.totalLines,
       units: totals.totalUnits,
@@ -158,31 +233,131 @@ const CreateSalesOrder = () => {
       },
     ]);
 
-  const updateLine = (idx, patch) =>
-    setLines((p) => p.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+  const buildPayload = () => ({
+    warehouse_id: header.warehouse_id,
+    client_id: header.client_id,
 
-  const removeLine = (idx) => setLines((p) => p.filter((_, i) => i !== idx));
+    customer_name: shipTo.name,
+    customer_phone: shipTo.phone,
+    customer_email: shipTo.email || null,
 
-  const onSaveDraft = () =>
-    console.log("Save Draft SO", {
-      header,
-      shipTo,
-      shipping,
-      alloc,
-      lines,
-      attachments,
-    });
+    ship_to_name: shipTo.name,
+    ship_to_address_line1: shipTo.address1,
+    ship_to_address_line2: shipTo.address2 || null,
+    ship_to_city: shipTo.city,
+    ship_to_state: shipTo.state,
+    ship_to_country: "India",
+    ship_to_pincode: String(shipTo.pincode),
+    ship_to_phone: shipTo.phone,
 
-  const onConfirm = () =>
-    console.log("Save & Confirm SO", {
-      header,
-      shipTo,
-      shipping,
-      alloc,
-      lines,
-      attachments,
-    });
+    order_type: header.orderType,
+    priority: header.priority,
+    sla_due_date: header.slaDueDate ? header.slaDueDate.split("T")[0] : null,
 
+    carrier: shipping.carrier || null,
+    carrier_service: shipping.serviceLevel || null,
+
+    reference_no: header.orderRef || null,
+    special_instructions: shipTo.instructions || null,
+    notes: header.notes || null,
+
+    payment_mode: Number(shipping.codAmount) > 0 ? "COD" : "PREPAID",
+    cod_amount: Number(shipping.codAmount) || 0,
+
+    lines: lines
+      .filter((l) => l.sku_id && Number(l.ordered_qty) > 0)
+      .map((l) => ({
+        sku_id: l.sku_id,
+        ordered_qty: Number(l.ordered_qty),
+        uom: l.uom || "EA",
+        allocation_rule: l.allocation_rule || "FIFO",
+        batch_preference: l.batch_preference || null,
+        expiry_date_min: l.expiry_date_min || null,
+        unit_price: Number(l.unit_price) || 0,
+        discount_percent: Number(l.discount_percent) || 0,
+        discount_amount: Number(l.discount_amount) || 0,
+        tax_percent: Number(l.tax_percent) || 0,
+        tax_amount: Number(l.tax_amount) || 0,
+        notes: l.note || l.notes || null,
+      })),
+
+    attachments: attachments.map((f) => ({
+      url: f.url,
+      name: f.name,
+      type: f.type,
+    })),
+  });
+
+  const onSaveDraft = async () => {
+    if (isLocked) return toast.error("Order is locked");
+
+    const basicErrors = basicInfoRef.current?.validate("draft") || [];
+
+    if (basicErrors.length) {
+      basicErrors.forEach((e) => toast.error(e));
+      return;
+    }
+
+    const { isValid, errors } = validateSalesOrder(header, shipTo, lines);
+    if (!isValid) {
+      Object.values(errors).forEach((e) => toast.error(e));
+      return;
+    }
+
+    const payload = buildPayload();
+
+    try {
+      if (!isEdit) {
+        await http.post("/sales-orders", payload);
+        toast.success("Draft created");
+      } else {
+        await http.put(`/sales-orders/${id}`, payload);
+        toast.success("Draft updated");
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.error || "Failed to save draft");
+    }
+  };
+
+  const onConfirm = async () => {
+    if (isLocked) return toast.error("Order already allocated");
+
+    const basicErrors = basicInfoRef.current?.validate("confirm") || [];
+    if (basicErrors.length) {
+      basicErrors.forEach((e) => toast.error(e));
+      return;
+    }
+
+    const { isValid, errors } = validateSalesOrder(header, shipTo, lines);
+    if (!isValid) {
+      Object.values(errors).forEach((e) => toast.error(e));
+      return;
+    }
+
+    const payload = buildPayload();
+    if (!payload) return;
+
+    let orderId = id;
+    try {
+      if (!isEdit) {
+        const { data } = await http.post("/sales-orders", payload);
+        orderId = data.id;
+      } else {
+        await http.put(`/sales-orders/${id}`, payload);
+      }
+
+      await http.post(`/sales-orders/${orderId}/confirm`);
+      toast.success("Order confirmed");
+    } catch (e) {
+      toast.error(e.response?.data?.error || "Failed to confirm order");
+    }
+  };
+
+  const isLocked = ["ALLOCATED", "PICKED", "PACKED", "SHIPPED"].includes(
+    status,
+  );
+  const canEdit = !isLocked;
+  const canConfirm = status === "DRAFT" || !isEdit;
   return (
     <FormPage
       breadcrumbs={[
@@ -192,175 +367,96 @@ const CreateSalesOrder = () => {
       title="Create Sales Order"
       topActions={
         <>
-          <button className="px-4 py-2 border rounded-md text-sm bg-white">
-            Cancel
-          </button>
           <button
-            onClick={onSaveDraft}
+            onClick={() => {
+              navigate("/outbound");
+            }}
             className="px-4 py-2 border rounded-md text-sm bg-white"
           >
-            Save Draft
+            Cancel
           </button>
+          {canEdit && (
+            <button
+              onClick={onSaveDraft}
+              className="px-4 py-2 border rounded-md text-sm bg-white"
+            >
+              Save Draft
+            </button>
+          )}
         </>
       }
       bottomLeft={
-        <button className="px-4 py-2 border rounded-md text-sm bg-white">
+        <button
+          onClick={() => navigate("/outbound")}
+          className="px-4 py-2 border rounded-md text-sm bg-white"
+        >
           Cancel
         </button>
       }
       bottomRight={
         <>
-          <button
-            onClick={onSaveDraft}
-            className="px-4 py-2 border rounded-md text-sm bg-white"
-          >
-            Save Draft
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 rounded-md text-sm bg-primary text-white"
-          >
-            Save & Confirm
-          </button>
+          {canEdit && (
+            <button
+              onClick={onSaveDraft}
+              className="px-4 py-2 border rounded-md text-sm bg-white"
+            >
+              Save Draft
+            </button>
+          )}
+          {canConfirm && (
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 rounded-md text-sm bg-primary text-white"
+            >
+              Save & Confirm
+            </button>
+          )}
+          {!canEdit && !canConfirm && (
+            <div className="px-4 py-2 rounded-md text-sm bg-gray-300 text-white">
+              Status: {status}
+            </div>
+          )}
         </>
       }
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* LEFT */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Order Header */}
-          <FormCard title="Order Header">
-            <FormGrid>
-              <SelectField
-                label="Warehouse"
-                required
-                value={header.warehouse}
-                onClick={() => console.log("open warehouse")}
-              />
-              <SelectField
-                label="Client"
-                required
-                value={header.client}
-                onClick={() => console.log("open client")}
-              />
-              <InputField
-                label="Order Reference No"
-                placeholder="e.g., PO-99881"
-                value={header.orderRef}
-                onChange={(v) => setH("orderRef", v)}
-              />
+          <BasicInformationSection
+            ref={basicInfoRef}
+            initialAsn={{
+              warehouse_id: header.warehouse_id,
+              client_id: header.client_id,
+              reference_no: header.orderRef,
+              notes: header.notes,
+            }}
+            clientQuery={isEdit ? { id: header.client_id } : {}}
+            mode={isEdit ? "edit" : "create"}
+            showSupplier={false}
+            showDock={false}
+            dockType="OUTBOUND"
+            onChange={(data) => {
+              setHeader((prev) => ({
+                ...prev,
+                warehouse_id: data.warehouse_id || null,
+                client_id: data.client_id || null,
+                orderRef: data.reference_no || "",
+                notes: data.notes || "",
+                warehouse_name: data.warehouse_label || "",
+                client_name: data.client_label || "",
+              }));
+            }}
+          />
 
-              <InputField
-                label="Order Date"
-                value={header.orderDate}
-                onChange={(v) => setH("orderDate", v)}
-              />
-              <SelectField
-                label="Priority"
-                value={header.priority}
-                onClick={() =>
-                  setH(
-                    "priority",
-                    header.priority === "Normal" ? "High" : "Normal",
-                  )
-                }
-              />
-              <SelectField
-                label="Order Type"
-                value={header.orderType}
-                onClick={() => console.log("open order type")}
-              />
-
-              <InputField
-                label="SLA Due Date"
-                placeholder="mm/dd/yyyy, --:--"
-                value={header.slaDueDate}
-                onChange={(v) => setH("slaDueDate", v)}
-              />
-            </FormGrid>
-          </FormCard>
-
-          {/* Ship-to / Customer */}
-          <div className="rounded-lg border border-gray-200 bg-white">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-900">
-                Ship-to / Customer
-              </div>
-              <button className="px-3 py-1.5 text-xs rounded-md border bg-white">
-                Select Saved Address
-              </button>
-            </div>
-
-            <div className="p-4">
-              <FormGrid>
-                <InputField
-                  label="Ship-to Name"
-                  required
-                  placeholder="Company or Contact Name"
-                  value={shipTo.name}
-                  onChange={(v) => setS("name", v)}
-                />
-                <InputField
-                  label="Phone"
-                  required
-                  placeholder="+1 (555) 000-0000"
-                  value={shipTo.phone}
-                  onChange={(v) => setS("phone", v)}
-                />
-
-                <InputField
-                  label="Address Line 1"
-                  required
-                  placeholder="Street address, P.O. box"
-                  value={shipTo.address1}
-                  onChange={(v) => setS("address1", v)}
-                />
-
-                <InputField
-                  label="Address Line 2"
-                  placeholder="Apartment, suite, unit, etc."
-                  value={shipTo.address2}
-                  onChange={(v) => setS("address2", v)}
-                />
-
-                <InputField
-                  label="City"
-                  required
-                  placeholder="City"
-                  value={shipTo.city}
-                  onChange={(v) => setS("city", v)}
-                />
-                <InputField
-                  label="State"
-                  required
-                  placeholder="State"
-                  value={shipTo.state}
-                  onChange={(v) => setS("state", v)}
-                />
-                <InputField
-                  label="Pincode"
-                  required
-                  placeholder="Zip Code"
-                  value={shipTo.pincode}
-                  onChange={(v) => setS("pincode", v)}
-                />
-
-                <InputField
-                  label="GSTIN / Tax ID"
-                  placeholder="Optional"
-                  value={shipTo.gstin}
-                  onChange={(v) => setS("gstin", v)}
-                />
-
-                <TextareaField
-                  label="Delivery Instructions"
-                  placeholder="Gate code, parking instructions, etc."
-                  value={shipTo.instructions}
-                  onChange={(v) => setS("instructions", v)}
-                />
-              </FormGrid>
-            </div>
-          </div>
+          {/* Other sections */}
+          <ShipToCustomer
+            shipTo={shipTo}
+            setShipTo={setShipTo}
+            phoneError={phoneError}
+            setPhoneError={setPhoneError}
+            emailError={emailError}
+            setEmailError={setEmailError}
+          />
 
           {/* Carrier & Shipping */}
           <FormCard title="Carrier & Shipping">
@@ -397,13 +493,13 @@ const CreateSalesOrder = () => {
           {/* Order Lines */}
           <OrderLines
             lines={lines}
-            onAdd={addLine}
-            onUpdate={updateLine}
-            onRemove={removeLine}
+            onChange={setLines}
+            disabled={isLocked}
+            clientId={header.client_id}
           />
 
           {/* Allocation Settings */}
-          <div className="rounded-lg border border-gray-200 bg-white">
+          {/* <div className="rounded-lg border border-gray-200 bg-white">
             <div className="px-4 py-3 border-b">
               <div className="text-sm font-semibold text-gray-900">
                 Allocation Settings
@@ -446,6 +542,56 @@ const CreateSalesOrder = () => {
                   }
                   disabled={!alloc.allowPartial}
                 />
+              </div>
+            </div>
+          </div> */}
+
+          <div className="rounded-lg border border-gray-200 bg-white">
+            <div className="px-4 py-3 border-b">
+              <div className="text-sm font-semibold text-gray-900">
+                Allocation Settings
+              </div>
+            </div>
+
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <div>
+                  <div className="text-sm font-medium text-gray-900">
+                    Auto-allocate on confirm
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {alloc.autoAllocateOnConfirm ? "Yes" : "No"}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium text-gray-900">
+                    Reserve inventory
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {alloc.reserveInventory ? "Yes" : "No"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <div className="text-sm font-medium text-gray-900">
+                    Allow partial allocation
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {alloc.allowPartial ? "Yes" : "No"}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium text-gray-900">
+                    Allow substitute SKU
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {alloc.allowSubstituteSku ? "Yes" : "No"}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

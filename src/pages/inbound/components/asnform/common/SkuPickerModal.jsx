@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import ConfirmDeleteModal from "@/pages/components/modals/ConfirmDeleteModal"; // reuse your modal shell if you want
+import { useEffect, useState } from "react";
 import http from "@/api/http";
 import Pagination from "@/pages/components/Pagination";
 

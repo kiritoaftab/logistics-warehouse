@@ -90,8 +90,8 @@ const NewRoutes = [
     element: protect("/orderDetails/:id", <OrderDetail />),
   },
   {
-    path: "/saleOrderCreate/:id",
-    element: protect("/saleOrderCreate/:id", <CreateSalesOrder />),
+    path: "/outbound/saleOrderCreate/:id",
+    element: protect("/outbound/saleOrderCreate/:id", <CreateSalesOrder />),
   },
 
   { path: "/masters", element: protect("/masters", <Masters />) },
@@ -140,8 +140,10 @@ const NewRoutes = [
 
   { path: "/billing", element: protect("/billing", <Billing />) },
   { path: "/setting", element: protect("/setting", <Setting />) },
-      { path: "/inventory/sku/:skuId", element: protect("/inventory/sku/:skuId", <SkuDetailPage />) },
-   
+  {
+    path: "/inventory/sku/:skuId",
+    element: protect("/inventory/sku/:skuId", <SkuDetailPage />),
+  },
 ];
 
 export default NewRoutes;

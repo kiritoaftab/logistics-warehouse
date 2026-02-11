@@ -23,20 +23,70 @@ import DateTimeField from "@/pages/components/forms/DateTimeField";
 import http from "@/api/http";
 
 const BasicInformationSection = forwardRef(
-  ({ initialAsn, mode, onChange }, ref) => {
-    const [form, setForm] = useState(() => ({
-      warehouse_id: initialAsn?.warehouse_id
-        ? String(initialAsn.warehouse_id)
-        : "",
-      client_id: initialAsn?.client_id ? String(initialAsn.client_id) : "",
-      supplier_id: initialAsn?.supplier_id
-        ? String(initialAsn.supplier_id)
-        : "",
-      dock_id: initialAsn?.dock_id ? String(initialAsn.dock_id) : "",
-      reference_no: initialAsn?.reference_no || "",
-      eta: initialAsn?.eta || "",
-      notes: initialAsn?.notes || "",
-    }));
+  (
+    {
+      initialAsn,
+      mode,
+      dockType = "INBOUND",
+      showDock = true,
+      showSupplier = true,
+      onChange,
+      clientQuery = {},
+    },
+    ref,
+  ) => {
+    const [form, setForm] = useState({
+      warehouse_id: "",
+      client_id: "",
+      supplier_id: "",
+      dock_id: "",
+      reference_no: "",
+      eta: "",
+      notes: "",
+    });
+
+    useEffect(() => {
+      if (!initialAsn) return;
+
+      setForm((prev) => {
+        const newWarehouse = initialAsn.warehouse_id
+          ? String(initialAsn.warehouse_id)
+          : "";
+        const newClient = initialAsn.client_id
+          ? String(initialAsn.client_id)
+          : "";
+
+        // only update if actual values changed
+        if (
+          prev.warehouse_id === newWarehouse &&
+          prev.client_id === newClient
+        ) {
+          return prev; // no change → no re-render
+        }
+
+        return {
+          warehouse_id: newWarehouse,
+          client_id: newClient,
+          supplier_id: initialAsn.supplier_id
+            ? String(initialAsn.supplier_id)
+            : "",
+          dock_id: initialAsn.dock_id ? String(initialAsn.dock_id) : "",
+          reference_no: initialAsn.reference_no || "",
+          eta: initialAsn.eta || "",
+          notes: initialAsn.notes || "",
+        };
+      });
+    }, [
+      initialAsn?.warehouse_id,
+      initialAsn?.client_id,
+      initialAsn?.supplier_id,
+      initialAsn?.dock_id,
+      initialAsn?.reference_no,
+      initialAsn?.eta,
+      initialAsn?.notes,
+    ]);
+
+    const [clientList, setClientList] = useState([]);
 
     const [warehouses, setWarehouses] = useState([]);
     const [docks, setDocks] = useState([]);
@@ -80,12 +130,12 @@ const BasicInformationSection = forwardRef(
       const wid = String(form.warehouse_id || "");
       return docks
         .filter((d) => String(d.warehouse_id) === wid)
-        .filter((d) => String(d.dock_type || "").toUpperCase() === "INBOUND")
+        .filter((d) => String(d.dock_type || "").toUpperCase() === dockType)
         .map((d) => ({
           id: String(d.id),
           label: `${d.dock_name} (${d.dock_code})`,
         }));
-    }, [docks, form.warehouse_id]);
+    }, [docks, form.warehouse_id, dockType]);
 
     const warehouseOptions = useMemo(
       () =>
@@ -98,13 +148,20 @@ const BasicInformationSection = forwardRef(
 
     const validate = (action = "draft") => {
       const errs = [];
-      if (action === "confirm") {
-        if (!form.warehouse_id) errs.push("Warehouse is required");
-        if (!form.client_id) errs.push("Client is required");
-        if (!form.supplier_id) errs.push("Supplier is required");
+
+      if (action !== "confirm") return errs;
+
+      if (!form.warehouse_id) errs.push("Warehouse is required");
+      if (!form.client_id) errs.push("Client is required");
+
+      if (dockType === "INBOUND") {
+        if (showSupplier && !form.supplier_id)
+          errs.push("Supplier is required");
+
         if (!form.eta) errs.push("ETA is required");
         else if (!toIsoOrNull(form.eta)) errs.push("ETA format is invalid");
       }
+
       return errs;
     };
 
@@ -162,7 +219,6 @@ const BasicInformationSection = forwardRef(
       [form, warehouseLabel, supplierLabel, clientLabel],
     );
 
-    // ✅ only runs when snapshot actually changes
     useEffect(() => {
       onChangeRef.current?.(snapshot);
     }, [snapshot]);
@@ -178,12 +234,9 @@ const BasicInformationSection = forwardRef(
             <select
               value={form.warehouse_id}
               disabled={loadingMasters}
-              onChange={(e) => {
-                set("warehouse_id", e.target.value);
-                set("dock_id", "");
-              }}
+              onChange={(e) => set("warehouse_id", e.target.value)}
               className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+             focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
             >
               <option value="">Select warehouse</option>
               {warehouseOptions.map((w) => (
@@ -192,6 +245,9 @@ const BasicInformationSection = forwardRef(
                 </option>
               ))}
             </select>
+            <p className="text-xs text-gray-500">
+              Selected: {warehouseLabel || "None"}
+            </p>
           </div>
 
           {/* Client */}
@@ -203,9 +259,14 @@ const BasicInformationSection = forwardRef(
               endpoint="/clients"
               listKey="clients"
               value={form.client_id}
-              onChange={(id) => {
+              query={clientQuery}
+              onChange={(id, clientObj) => {
                 set("client_id", id);
-                setClientLabel(`Client: ${id}`);
+                setClientLabel(
+                  clientObj
+                    ? `${clientObj.client_name} (${clientObj.client_code})`
+                    : "",
+                );
               }}
               placeholder="Select client"
               renderItem={(c) => ({
@@ -216,53 +277,56 @@ const BasicInformationSection = forwardRef(
           </div>
 
           {/* Supplier */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Supplier <span className="text-red-500">*</span>
-            </label>
-            <PaginatedEntityDropdown
-              endpoint="/suppliers"
-              listKey="suppliers"
-              value={form.supplier_id}
-              onChange={(id) => {
-                set("supplier_id", id);
-                setSupplierLabel(`Supplier: ${id}`);
-              }}
-              placeholder="Select supplier"
-              renderItem={(s) => ({
-                title: `${s.supplier_name} (${s.supplier_code})`,
-                subtitle: `${s.email || "-"} • ${s.phone || "-"}`,
-              })}
-            />
-          </div>
-
+          {showSupplier && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Supplier <span className="text-red-500">*</span>
+              </label>
+              <PaginatedEntityDropdown
+                endpoint="/suppliers"
+                listKey="suppliers"
+                value={form.supplier_id}
+                onChange={(id) => {
+                  set("supplier_id", id);
+                  setSupplierLabel(`Supplier: ${id}`);
+                }}
+                placeholder="Select supplier"
+                renderItem={(s) => ({
+                  title: `${s.supplier_name} (${s.supplier_code})`,
+                  subtitle: `${s.email || "-"} • ${s.phone || "-"}`,
+                })}
+              />
+            </div>
+          )}
           {/* Dock */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Dock Door
-            </label>
-            <select
-              value={form.dock_id}
-              disabled={!form.warehouse_id}
-              onChange={(e) => set("dock_id", e.target.value)}
-              className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm
+          {showDock && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Dock Door
+              </label>
+              <select
+                value={form.dock_id}
+                disabled={!form.warehouse_id}
+                onChange={(e) => set("dock_id", e.target.value)}
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm
                          focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
-            >
-              <option value="">
-                {form.warehouse_id
-                  ? "Select dock (Inbound)"
-                  : "Select warehouse first"}
-              </option>
-              {inboundDocksForWarehouse.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
+              >
+                <option value="">
+                  {form.warehouse_id
+                    ? `Select dock (${dockType.toLowerCase()})`
+                    : "Select warehouse first"}
                 </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500">
-              Note: warehouse is required to load docks.
-            </p>
-          </div>
+                {inboundDocksForWarehouse.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500">
+                Note: warehouse is required to load docks.
+              </p>
+            </div>
+          )}
 
           <InputField
             label="Reference No"

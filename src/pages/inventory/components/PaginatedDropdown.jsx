@@ -5,6 +5,7 @@ import Pagination from "../../components/Pagination";
 
 const PaginatedDropdown = ({
   value,
+  selectedItem,
   onChange,
   placeholder = "Select",
   endpoint, // "/clients" | "/skus" | "/locations"
@@ -12,6 +13,7 @@ const PaginatedDropdown = ({
   limit = 10,
   disabled = false,
   enableSearch = true,
+  islabel,
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -57,18 +59,28 @@ const PaginatedDropdown = ({
   useEffect(() => {
     if (open) loadPage(1);
   }, [open, search]);
+  useEffect(() => {
+    if (value && items.length === 0) {
+      loadPage(1);
+    }
+  }, [value]);
 
-  const selectedItem = items.find((it) => String(it.id) === String(value));
-
+  const selected =
+    items.find((it) => String(it.id) === String(value)) || selectedItem || null;
   return (
     <div className="relative">
+      {islabel && (
+        <label className="block mb-1 text-xs font-medium text-gray-600">
+          {islabel}
+        </label>
+      )}
       <button
         ref={btnRef}
         disabled={disabled}
         onClick={() => setOpen((s) => !s)}
         className="w-full rounded-md border px-3 py-2 text-left text-sm bg-white"
       >
-        {selectedItem ? renderItem(selectedItem).title : placeholder}
+        {selected ? renderItem(selected).title : placeholder}
       </button>
 
       {open &&
