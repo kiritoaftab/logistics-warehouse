@@ -1,15 +1,17 @@
-// picking/Picking.jsx
+// In Picking.jsx
 import React, { useState } from "react";
 import PageHeader from "../components/PageHeader";
-import { Plus, Download } from "lucide-react";
+import { Plus, Download, ArrowLeft } from "lucide-react";
 import PickWaves from "./PickWaves";
 import PickTasks from "./PickTasks";
 import PickTaskDetail from "./PickTaskDetail";
 import PickExceptions from "./PickExceptions";
+import PickWaveDetails from "./PickWaveDetails"; // Import the component
 
 const Picking = () => {
   const [activeTab, setActiveTab] = useState("waves");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [selectedWaveId, setSelectedWaveId] = useState(null); // Add this state
 
   const actions = (
     <>
@@ -24,10 +26,22 @@ const Picking = () => {
     </>
   );
 
-  // Handle task selection (when user clicks "Start Task" or "View" in PickTasks)
+  // Handle wave selection
+  const handleWaveSelect = (waveId) => {
+    setSelectedWaveId(waveId);
+    setActiveTab("waveDetails");
+  };
+
+  // Handle task selection
   const handleTaskSelect = (taskId) => {
     setSelectedTaskId(taskId);
     setActiveTab("taskDetail");
+  };
+
+  // Handle back from wave details
+  const handleBackFromWaveDetails = () => {
+    setSelectedWaveId(null);
+    setActiveTab("waves");
   };
 
   // Handle back from task detail
@@ -40,7 +54,7 @@ const Picking = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "waves":
-        return <PickWaves onTaskSelect={handleTaskSelect} />;
+        return <PickWaves onWaveSelect={handleWaveSelect} onTaskSelect={handleTaskSelect} />;
       case "tasks":
         return <PickTasks onTaskSelect={handleTaskSelect} />;
       case "taskDetail":
@@ -50,10 +64,17 @@ const Picking = () => {
             onBack={handleBackFromTaskDetail}
           />
         );
+      case "waveDetails": // Add this case
+        return (
+          <PickWaveDetails
+            waveId={selectedWaveId}
+            onBack={handleBackFromWaveDetails}
+          />
+        );
       case "exceptions":
         return <PickExceptions />;
       default:
-        return <PickWaves onTaskSelect={handleTaskSelect} />;
+        return <PickWaves onWaveSelect={handleWaveSelect} onTaskSelect={handleTaskSelect} />;
     }
   };
 
@@ -61,6 +82,10 @@ const Picking = () => {
   const getTabs = () => {
     if (activeTab === "taskDetail") {
       return [{ key: "taskDetail", label: "Pick Task Detail", isActive: true }];
+    }
+    
+    if (activeTab === "waveDetails") {
+      return [{ key: "waveDetails", label: "Wave Details", isActive: true }];
     }
 
     return [
@@ -77,7 +102,7 @@ const Picking = () => {
   const tabs = getTabs();
 
   return (
-    <div className="min-h-screen s p-6">
+    <div className="min-h-screen p-6">
       <div className="mx-auto 2xl:max-w-[1900px]">
         <PageHeader
           title="Picking"
@@ -85,8 +110,8 @@ const Picking = () => {
           actions={actions}
         />
 
-        {/* Tabs - Only show when not in task detail view */}
-        {activeTab !== "taskDetail" && (
+        {/* Tabs - Only show when not in detail view */}
+        {!["taskDetail", "waveDetails"].includes(activeTab) && (
           <div className="mb-6 border-b border-gray-200">
             <div className="flex items-center gap-10">
               <button
@@ -94,7 +119,7 @@ const Picking = () => {
                 className={`px-2 pb-3 text-sm font-medium ${
                   activeTab === "waves"
                     ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-500"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 Pick Waves
@@ -104,7 +129,7 @@ const Picking = () => {
                 className={`px-2 pb-3 text-sm font-medium ${
                   activeTab === "tasks"
                     ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-500"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 Pick Tasks
@@ -114,7 +139,7 @@ const Picking = () => {
                 className={`px-2 pb-3 text-sm font-medium ${
                   activeTab === "exceptions"
                     ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-500"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 Pick Exceptions
@@ -123,14 +148,18 @@ const Picking = () => {
           </div>
         )}
 
-        {/* Show back button when in task detail view */}
-        {activeTab === "taskDetail" && (
+        {/* Show back button when in detail view */}
+        {["taskDetail", "waveDetails"].includes(activeTab) && (
           <div className="mb-6">
             <button
-              onClick={handleBackFromTaskDetail}
+              onClick={() => {
+                if (activeTab === "taskDetail") handleBackFromTaskDetail();
+                if (activeTab === "waveDetails") handleBackFromWaveDetails();
+              }}
               className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-4"
             >
-              ← Back to Pick Tasks
+              <ArrowLeft size={16} />
+              Back to {activeTab === "taskDetail" ? "Pick Tasks" : "Pick Waves"}
             </button>
           </div>
         )}

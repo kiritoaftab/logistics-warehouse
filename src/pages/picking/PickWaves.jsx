@@ -1,29 +1,35 @@
-// picking/PickWaves.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // Add this import
 import FilterBar from "../components/FilterBar";
 import CusTable from "../components/CusTable";
+import http from "../../api/http";
+import { format } from "date-fns";
 
 const StatusPill = ({ status }) => {
-  const map = {
-    "In Progress": "bg-blue-100 text-blue-700",
-    Released: "bg-green-100 text-green-700",
-    Draft: "bg-gray-100 text-gray-600",
-    Completed: "bg-purple-100 text-purple-700",
-    Cancelled: "bg-red-100 text-red-600",
+  const statusMap = {
+    DRAFT: { label: "Draft", className: "bg-gray-100 text-gray-600" },
+    RELEASED: { label: "Released", className: "bg-yellow-100 text-yellow-700" },
+    "IN PROGRESS": { label: "In Progress", className: "bg-blue-100 text-blue-700" },
+    PICKING_IN_PROGRESS: { label: "Picking In Progress", className: "bg-blue-100 text-blue-700" },
+    COMPLETED: { label: "Completed", className: "bg-green-100 text-green-700" },
+    CANCELLED: { label: "Cancelled", className: "bg-red-100 text-red-600" },
+    CLOSED: { label: "Closed", className: "bg-purple-100 text-purple-700" },
   };
+
+  const statusInfo = statusMap[status] || { label: status, className: "bg-gray-100 text-gray-700" };
 
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-        map[status] || "bg-gray-100 text-gray-700"
-      }`}
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.className}`}
     >
-      {status}
+      {statusInfo.label}
     </span>
   );
 };
 
-const PickWaves = () => {
+const PickWaves = ({ onWaveSelect, onTaskSelect }) => {
+  const navigate = useNavigate(); // Initialize navigate
+  
   const [filters, setFilters] = useState({
     date: "Today",
     warehouse: "All Warehouses",
@@ -33,13 +39,21 @@ const PickWaves = () => {
     search: "",
   });
 
+  const [waves, setWaves] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    pages: 1,
+  });
+
   const filterConfig = [
     {
       key: "date",
       type: "select",
       label: "Date",
       value: filters.date,
-      options: ["Today", "Yesterday", "Last 7 Days", "Last 30 Days"],
+      options: ["Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Custom"],
       className: "w-[140px]",
     },
     {
@@ -65,11 +79,13 @@ const PickWaves = () => {
       value: filters.status,
       options: [
         "All",
-        "Draft",
-        "Released",
-        "In Progress",
-        "Completed",
-        "Cancelled",
+        "DRAFT",
+        "RELEASED",
+        "IN PROGRESS",
+        "PICKING_IN_PROGRESS",
+        "COMPLETED",
+        "CANCELLED",
+        "CLOSED",
       ],
       className: "w-[120px]",
     },
@@ -86,129 +102,216 @@ const PickWaves = () => {
       type: "search",
       label: "Search",
       value: filters.search,
-      placeholder: "Wave ID / Task ID / Order No",
+      placeholder: "Wave ID / Order No / Client",
       className: "w-[240px]",
     },
   ];
 
+  // Fetch pick waves
+  const fetchPickWaves = async (page = 1) => {
+    try {
+      setLoading(true);
+      
+      const params = {
+        page,
+        limit: 10,
+        warehouse_id: 1,
+      };
+
+      if (filters.search) {
+        params.search = filters.search;
+      }
+
+      if (filters.status && filters.status !== "All") {
+        params.status = filters.status;
+      }
+
+      const response = await http.get("/pick-waves/", { params });
+      
+      if (response.data) {
+        setWaves(response.data.waves || []);
+        setPagination({
+          total: response.data.total || 0,
+          page: response.data.page || 1,
+          pages: response.data.pages || 1,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching pick waves:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPickWaves();
+  }, []);
+
+  // Function to navigate to wave details page
+  const handleViewDetails = (wave) => {
+    // Method 1: Using navigate (for separate page)
+    navigate(`/picking/waves/${wave.id}`);
+    
+    // OR Method 2: Using onWaveSelect prop (for same page tab)
+    // if (onWaveSelect) {
+    //   onWaveSelect(wave.id);
+    // }
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return format(date, "dd MMM, HH:mm");
+    } catch {
+      return dateString;
+    }
+  };
+
+  const calculateCompletionRate = (totalTasks, completedTasks) => {
+    if (!totalTasks || totalTasks === 0) return "0%";
+    const percentage = (completedTasks / totalTasks) * 100;
+    return `${Math.round(percentage)}%`;
+  };
+
   const columns = [
     {
-      key: "waveId",
+      key: "wave_no",
       title: "Wave ID",
       render: (r) => (
-        <span className="font-semibold text-blue-600">{r.waveId}</span>
+        <span className="font-semibold text-blue-600">{r.wave_no}</span>
       ),
     },
-    { key: "client", title: "Client" },
-    { key: "orders", title: "Orders" },
-    { key: "skuLines", title: "SKU Lines" },
-    { key: "units", title: "Units" },
-    { key: "strategy", title: "Strategy" },
-    { key: "createdTime", title: "Created Time" },
+    {
+      key: "client",
+      title: "Client",
+      render: (r) => {
+        const client = r.orders?.[0]?.client_id || "N/A";
+        return <span>{client === 1 ? "Acme Corp" : `Client ${client}`}</span>;
+      },
+    },
+    {
+      key: "orders",
+      title: "Orders",
+      render: (r) => r.total_orders || 0,
+    },
+    {
+      key: "skuLines",
+      title: "SKU Lines",
+      render: (r) => r.total_lines || 0,
+    },
+    {
+      key: "units",
+      title: "Units",
+      render: (r) => r.total_units || "0.000",
+    },
+    {
+      key: "strategy",
+      title: "Strategy",
+      render: (r) => r.wave_strategy || "-",
+    },
+    {
+      key: "createdTime",
+      title: "Created Time",
+      render: (r) => formatDateTime(r.createdAt),
+    },
     {
       key: "status",
       title: "Status",
       render: (r) => <StatusPill status={r.status} />,
     },
-    { key: "assignedTeam", title: "Assigned Team" },
+    {
+      key: "completion",
+      title: "Completion",
+      render: (r) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">
+            {calculateCompletionRate(r.total_tasks, r.completed_tasks)}
+          </span>
+          <span className="text-xs text-gray-500">
+            {r.completed_tasks || 0}/{r.total_tasks || 0} tasks
+          </span>
+        </div>
+      ),
+    },
     {
       key: "actions",
       title: "Actions",
       render: (r) => (
-        <button className="text-blue-600 text-sm font-medium hover:text-blue-800">
-          {r.status === "Draft" ? "Release Wave" : "View Tasks"} ...
-        </button>
+        <div className="flex gap-2">
+          <button 
+            className="text-blue-600 text-sm font-medium hover:text-blue-800 px-2 py-1 hover:bg-blue-50 rounded"
+            onClick={() => handleViewDetails(r)} // FIXED: Changed to handleViewDetails
+          >
+            View Details
+          </button>
+          {r.status === "DRAFT" && (
+            <button className="text-green-600 text-sm font-medium hover:text-green-800 px-2 py-1 hover:bg-green-50 rounded">
+              Release
+            </button>
+          )}
+        </div>
       ),
     },
   ];
 
-  const data = [
-    {
-      id: 1,
-      waveId: "WV-2023-8901",
-      client: "Acme Corp",
-      orders: 12,
-      skuLines: 45,
-      units: 320,
-      strategy: "Multi Zone",
-      createdTime: "Today, 09:30 AM",
-      status: "In Progress",
-      assignedTeam: "Team Alpha",
-    },
-    {
-      id: 2,
-      waveId: "WV-2023-8902",
-      client: "Tech Retailers",
-      orders: 5,
-      skuLines: 18,
-      units: 150,
-      strategy: "Single Zone",
-      createdTime: "Today, 10:15 AM",
-      status: "Released",
-      assignedTeam: "Unassigned",
-    },
-    {
-      id: 3,
-      waveId: "WV-2023-8903",
-      client: "Global Foods",
-      orders: 24,
-      skuLines: 98,
-      units: 1240,
-      strategy: "Batch Pick",
-      createdTime: "Today, 11:00 AM",
-      status: "Draft",
-      assignedTeam: "-",
-    },
-    {
-      id: 4,
-      waveId: "WV-2023-8898",
-      client: "Acme Corp",
-      orders: 8,
-      skuLines: 32,
-      units: 210,
-      strategy: "Multi Zone",
-      createdTime: "Yesterday, 16:45",
-      status: "Completed",
-      assignedTeam: "Team Beta",
-    },
-    {
-      id: 5,
-      waveId: "WV-2023-8895",
-      client: "Tech Retailers",
-      orders: 15,
-      skuLines: 60,
-      units: 480,
-      strategy: "Multi Zone",
-      createdTime: "Yesterday, 14:20",
-      status: "Cancelled",
-      assignedTeam: "-",
-    },
-  ];
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleApplyFilters = () => {
+    fetchPickWaves(1);
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      date: "Today",
+      warehouse: "All Warehouses",
+      client: "All Clients",
+      status: "All",
+      assigned: "Assigned to",
+      search: "",
+    });
+    fetchPickWaves(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    fetchPickWaves(newPage);
+  };
 
   return (
     <div className="space-y-6">
       <FilterBar
         filters={filterConfig}
         showActions
-        onFilterChange={(key, value) =>
-          setFilters((prev) => ({ ...prev, [key]: value }))
-        }
-        onApply={() => console.log("Apply filters:", filters)}
-        onReset={() =>
-          setFilters({
-            date: "Today",
-            warehouse: "All Warehouses",
-            client: "All Clients",
-            status: "All",
-            assigned: "Assigned to",
-            search: "",
-          })
-        }
+        onFilterChange={handleFilterChange}
+        onApply={handleApplyFilters}
+        onReset={handleResetFilters}
       />
 
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <CusTable columns={columns} data={data} />
-      </div>
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      ) : (
+        <>
+          <div className="rounded-lg border border-gray-200 bg-white">
+            <CusTable 
+              columns={columns} 
+              data={waves} 
+              pagination={pagination}
+              onPageChange={handlePageChange}
+              loading={loading}
+            />
+          </div>
+
+          {waves.length === 0 && !loading && (
+            <div className="text-center py-8 text-gray-500">
+              No pick waves found. Try adjusting your filters or create a new pick wave.
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
