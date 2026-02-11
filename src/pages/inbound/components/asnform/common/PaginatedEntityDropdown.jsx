@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import http from "@/api/http";
 import Pagination from "@/pages/components/Pagination";
+import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 
 const PaginatedEntityDropdown = ({
   endpoint,
@@ -31,30 +32,34 @@ const PaginatedEntityDropdown = ({
 
   // ✅ NEW
   const [search, setSearch] = useState("");
+  const [hasFetched, setHasFetched] = useState(false);
 
   const wrapRef = useRef(null);
-  // preload selected item if value exists
+  const searchTimeout = useRef(null);
+
   useEffect(() => {
-    if (!value) return;
+    if (!value || (Array.isArray(value) && value.length === 0)) return;
 
     const fetchSelected = async () => {
       try {
         const qs = new URLSearchParams();
-        qs.set("id", value); // fetch by ID
+        // handle single value or array of IDs
+        const ids = Array.isArray(value) ? value.join(",") : value;
+        qs.set("id", ids); // fetch by ID(s)
+
         // include any extra query params
         Object.entries(query || {}).forEach(([k, v]) => {
           if (v != null && v !== "") qs.set(k, String(v));
         });
 
         const res = await http.get(`${endpoint}?${qs.toString()}`);
-        const list = res?.data?.data?.[listKey] || [];
-
+        const list =
+          res?.data?.data?.[listKey] || res?.data?.[listKey] || res?.data || [];
         if (list.length) {
           setItems((prev) => {
-            if (!prev.find((x) => String(x.id) === String(value))) {
-              return [...list, ...prev];
-            }
-            return prev;
+            const prevIds = prev.map((x) => x.id);
+            const newItems = list.filter((x) => !prevIds.includes(x.id));
+            return [...prev, ...newItems];
           });
         }
       } catch (e) {
@@ -63,7 +68,6 @@ const PaginatedEntityDropdown = ({
     };
 
     fetchSelected();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, endpoint, JSON.stringify(query)]);
 
   // close on outside click
@@ -118,12 +122,23 @@ const PaginatedEntityDropdown = ({
     }
   };
 
-  // load first page when opened OR when query/search changes
+  useEffect(() => {
+    if (!enableSearch) return;
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      loadPage(1);
+    }, 400);
+    return () => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    };
+  }, [search, JSON.stringify(query), enableSearch]);
+
   useEffect(() => {
     if (!open) return;
-    loadPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, JSON.stringify(query), enableSearch, search]);
+    if (hasFetched) return; // already loaded, skip
+
+    loadPage(1).then(() => setHasFetched(true));
+  }, [open]);
 
   const selected = items.find((x) => String(x.id) === String(value));
   const selectedLabel = value
@@ -139,10 +154,14 @@ const PaginatedEntityDropdown = ({
         disabled={disabled}
         onClick={() => setOpen((s) => !s)}
         className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left text-sm
-                   focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+             flex justify-between items-center
+             focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
       >
         <span className={value ? "text-gray-900" : "text-gray-400"}>
           {selectedLabel}
+        </span>
+        <span className="ml-2 text-gray-400">
+          {open ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
         </span>
       </button>
 

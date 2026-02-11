@@ -14,8 +14,8 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [credentials, setCredentials] = useState({
-    email: "",
-    password: "",
+    email: "admin@wms.com",
+    password: "Admin@123",
   });
 
   const handleSubmit = async (e) => {

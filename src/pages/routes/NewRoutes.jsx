@@ -36,6 +36,7 @@ import Unauthorized from "../unauthorized/Unauthorized";
 import StockBySkuTab from "../inventory/components/tabs/stockBySku/StockBySkuTab";
 import SkuDetailPage from "../inventory/components/SkuDetailPage";
 import PickWaveDetails from "../picking/PickWaveDetails";
+import CreatePickWavePage from "../picking/components/CreatePickWavePage";
 
 const protect = (path, element) => {
   const rule = ROUTE_PERMS[path];
@@ -132,6 +133,10 @@ const NewRoutes = [
   },
 
   { path: "/picking", element: protect("/picking", <Picking />) },
+  {
+    path: "/picking/createPickWavePage",
+    element: protect("/picking/createPickWavePage", <CreatePickWavePage />),
+  },
   { path: "/packing", element: protect("/packing", <Packing />) },
   { path: "/shipping", element: protect("/shipping", <Shipping />) },
   {
