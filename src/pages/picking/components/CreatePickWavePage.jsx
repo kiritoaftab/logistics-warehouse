@@ -4,9 +4,11 @@ import FormPage from "@/pages/components/forms/FormPage";
 import { useToast } from "@/pages/components/toast/ToastProvider";
 import { getWarehouses } from "../../inbound/components/api/masters.api";
 import { FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 
 const CreatePickWavePage = () => {
   const toast = useToast();
+  const navigate = useNavigate();
 
   const [warehouses, setWarehouses] = useState([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState("");
@@ -148,7 +150,26 @@ const CreatePickWavePage = () => {
   return (
     <FormPage
       title="Create Pick Wave"
-      breadcrumbs={[{ label: "Pick Waves", href: "/pick-waves" }]}
+      breadcrumbs={[
+        { label: "Pick Waves", to: "/picking" },
+        { label: "Create Pick Wave" },
+      ]}
+      topActions={
+        <>
+          <button
+            onClick={() => navigate("/picking")}
+            className="px-4 py-2 border rounded-md text-sm bg-white"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={createPickWave}
+            className="px-4 py-2 rounded-md text-sm bg-primary text-white"
+          >
+            Create Pick Wave
+          </button>
+        </>
+      }
       bottomRight={
         <div className="flex flex-wrap gap-2">
           <button
