@@ -73,7 +73,8 @@ const ModulesTab = () => {
     setLoading(true);
     try {
       const res = await http.get("/modules");
-      const list = res?.data?.data || [];
+      const list =
+        res?.data?.data?.map((m, i) => ({ ...m, slNo: i + 1 })) || [];
       setModules(list);
     } catch (e) {
       console.error(e);
@@ -230,6 +231,7 @@ const ModulesTab = () => {
 
   const columns = useMemo(
     () => [
+      { key: "slNo", title: "Sl No." },
       { key: "name", title: "Name" },
       { key: "code", title: "Code" },
       {
