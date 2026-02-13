@@ -13,7 +13,7 @@ const OutboundOrders = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [selectedRows, setSelectedRows] = useState([]);
-  
+
   const {
     loading,
     f,
@@ -50,28 +50,28 @@ const OutboundOrders = () => {
     let slaBreachRisk = 0;
 
     // Process each order
-    data.forEach(order => {
+    data.forEach((order) => {
       totalOrders++;
       const status = order.status;
       statusCounts[status] = (statusCounts[status] || 0) + 1;
 
       // Count pending allocation (CONFIRMED status)
-      if (status === 'CONFIRMED') {
+      if (status === "CONFIRMED") {
         pendingAllocation++;
       }
 
       // Count picking pending (ALLOCATED status)
-      if (status === 'ALLOCATED') {
+      if (status === "ALLOCATED") {
         pickingPending++;
       }
 
       // Count packed ready (PACKED status)
-      if (status === 'PACKED') {
+      if (status === "PACKED") {
         packedReady++;
       }
 
       // Count shipped today (check if shipped today)
-      if (status === 'SHIPPED' && order.shipped_at) {
+      if (status === "SHIPPED" && order.shipped_at) {
         const shippedDate = new Date(order.shipped_at);
         const today = new Date();
         if (shippedDate.toDateString() === today.toDateString()) {
@@ -84,9 +84,12 @@ const OutboundOrders = () => {
         const dueDate = new Date(order.sla_due_date);
         const now = new Date();
         const hoursUntilDue = (dueDate - now) / (1000 * 60 * 60);
-        
+
         // If due within 24 hours and not completed
-        if (hoursUntilDue <= 24 && !['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(status)) {
+        if (
+          hoursUntilDue <= 24 &&
+          !["SHIPPED", "DELIVERED", "CANCELLED"].includes(status)
+        ) {
           slaBreachRisk++;
         }
       }
@@ -94,8 +97,8 @@ const OutboundOrders = () => {
 
     // Also add stats from API stats endpoint if available
     if (apiStats && apiStats.length > 0) {
-      apiStats.forEach(stat => {
-        if (stat.status === 'PICKED') {
+      apiStats.forEach((stat) => {
+        if (stat.status === "PICKED") {
           // You could update counts based on API stats
         }
       });
@@ -112,7 +115,7 @@ const OutboundOrders = () => {
   }, [data, apiStats]);
 
   const handleFilterChange = (key, value) => {
-    setF(prev => ({ ...prev, [key]: value, page: 1 })); // Reset to page 1 on filter change
+    setF((prev) => ({ ...prev, [key]: value, page: 1 })); // Reset to page 1 on filter change
   };
 
   const handleReset = () => {
@@ -145,48 +148,73 @@ const OutboundOrders = () => {
   };
 
   const getStatusTone = (status) => {
-    switch(status) {
-      case 'DRAFT': return 'gray';
-      case 'CONFIRMED': return 'blue';
-      case 'ALLOCATED': return 'green';
-      case 'PICKING': return 'orange';
-      case 'PICKED': return 'yellow';
-      case 'PACKING': return 'purple';
-      case 'PACKED': return 'purple';
-      case 'SHIPPED': return 'green';
-      case 'DELIVERED': return 'green';
-      case 'CANCELLED': return 'red';
-      default: return 'gray';
+    switch (status) {
+      case "DRAFT":
+        return "gray";
+      case "CONFIRMED":
+        return "blue";
+      case "ALLOCATED":
+        return "green";
+      case "PICKING":
+        return "orange";
+      case "PICKED":
+        return "yellow";
+      case "PACKING":
+        return "purple";
+      case "PACKED":
+        return "purple";
+      case "SHIPPED":
+        return "green";
+      case "DELIVERED":
+        return "green";
+      case "CANCELLED":
+        return "red";
+      default:
+        return "gray";
     }
   };
 
   const getAllocationTone = (status) => {
-    switch(status) {
-      case 'FULL': return 'green';
-      case 'PARTIAL': return 'orange';
-      case 'NONE': return 'gray';
-      default: return 'gray';
+    switch (status) {
+      case "FULL":
+        return "green";
+      case "PARTIAL":
+        return "orange";
+      case "NONE":
+        return "gray";
+      default:
+        return "gray";
     }
   };
 
   const getPriorityTone = (priority) => {
-    switch(priority) {
-      case 'HIGH': return 'red';
-      case 'MEDIUM': return 'orange';
-      case 'NORMAL': return 'blue';
-      default: return 'gray';
+    switch (priority) {
+      case "HIGH":
+        return "red";
+      case "MEDIUM":
+        return "orange";
+      case "NORMAL":
+        return "blue";
+      default:
+        return "gray";
     }
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return '—';
+    if (!dateString) return "—";
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
+  };
+
+  const actionBystatus = (row) => {
+    if (row?.status === "DRAFT") {
+      navigate(`/outbound/saleOrderCreate/${row?.id}`);
+    }
   };
 
   const columns = useMemo(
@@ -224,14 +252,16 @@ const OutboundOrders = () => {
             >
               {row.order_no}
             </button>
-            <div className="text-xs text-gray-400">Ref: {row.reference_no || '—'}</div>
+            <div className="text-xs text-gray-400">
+              Ref: {row.reference_no || "—"}
+            </div>
           </div>
         ),
       },
       {
         key: "client",
         title: "Client",
-        render: (row) => row.client?.client_name || '—',
+        render: (row) => row.client?.client_name || "—",
       },
       {
         key: "customer",
@@ -259,10 +289,7 @@ const OutboundOrders = () => {
         key: "priority",
         title: "Priority",
         render: (row) => (
-          <Pill
-            text={row.priority}
-            tone={getPriorityTone(row.priority)}
-          />
+          <Pill text={row.priority} tone={getPriorityTone(row.priority)} />
         ),
       },
       {
@@ -272,17 +299,20 @@ const OutboundOrders = () => {
           const dueDate = new Date(row.sla_due_date);
           const now = new Date();
           const hoursUntilDue = (dueDate - now) / (1000 * 60 * 60);
-          
+
           let displayText = formatDate(row.sla_due_date);
           let isOverdue = false;
-          
-          if (hoursUntilDue <= 0 && !['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(row.status)) {
+
+          if (
+            hoursUntilDue <= 0 &&
+            !["SHIPPED", "DELIVERED", "CANCELLED"].includes(row.status)
+          ) {
             displayText = `Overdue ${Math.abs(Math.round(hoursUntilDue))}h`;
             isOverdue = true;
           } else if (hoursUntilDue <= 24) {
             displayText = `${Math.round(hoursUntilDue)}h left`;
           }
-          
+
           return (
             <span className={isOverdue ? "text-red-500 font-medium" : ""}>
               {displayText}
@@ -310,22 +340,23 @@ const OutboundOrders = () => {
       {
         key: "carrier",
         title: "Carrier",
-        render: (row) => row.carrier || '—',
+        render: (row) => row.carrier || "—",
       },
       {
         key: "actions",
         title: "Actions",
         render: (row) => {
           let actionLabel = "View";
-          if (row.status === 'CONFIRMED') actionLabel = "Allocate";
-          if (row.status === 'ALLOCATED') actionLabel = "Pick";
-          if (row.status === 'PICKED') actionLabel = "Pack";
-          if (row.status === 'PACKED') actionLabel = "Ship";
-          
+          if (row.status === "DRAFT") actionLabel = "Edit";
+          if (row.status === "CONFIRMED") actionLabel = "Allocate";
+          if (row.status === "ALLOCATED") actionLabel = "Pick";
+          if (row.status === "PICKED") actionLabel = "Pack";
+          if (row.status === "PACKED") actionLabel = "Ship";
+
           return (
             <div className="flex items-center justify-end gap-2">
               <button
-                onClick={() => toast.info(`Action: ${actionLabel}`)}
+                onClick={() => actionBystatus(row)}
                 className="px-3 py-1.5 text-xs rounded-md border bg-white"
               >
                 {actionLabel}
@@ -395,9 +426,7 @@ const OutboundOrders = () => {
         </div>
       ) : data.length === 0 ? (
         <div className="flex justify-center items-center h-64 flex-col">
-          <div className="text-gray-500 mb-2 text-lg">
-            No orders found
-          </div>
+          <div className="text-gray-500 mb-2 text-lg">No orders found</div>
           <button
             onClick={refresh}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
@@ -409,7 +438,8 @@ const OutboundOrders = () => {
         <>
           {/* Order Count */}
           <div className="text-sm text-gray-500 mb-2">
-            Showing {data.length} of {pagination.total} orders • Page {pagination.page} of {pagination.pages}
+            Showing {data.length} of {pagination.total} orders • Page{" "}
+            {pagination.page} of {pagination.pages}
           </div>
 
           {/* Table */}

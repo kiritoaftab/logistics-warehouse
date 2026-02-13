@@ -9,17 +9,23 @@ const TaskStatusPill = ({ status }) => {
   const statusMap = {
     PENDING: { label: "Pending", className: "bg-yellow-100 text-yellow-700" },
     ASSIGNED: { label: "Assigned", className: "bg-blue-100 text-blue-700" },
-    "IN PROGRESS": { label: "In Progress", className: "bg-blue-100 text-blue-700" },
-    IN_PROGRESS: { label: "In Progress", className: "bg-blue-100 text-blue-700" },
+    "IN PROGRESS": {
+      label: "In Progress",
+      className: "bg-blue-100 text-blue-700",
+    },
+    IN_PROGRESS: {
+      label: "In Progress",
+      className: "bg-blue-100 text-blue-700",
+    },
     COMPLETED: { label: "Completed", className: "bg-green-100 text-green-700" },
     DONE: { label: "Done", className: "bg-green-100 text-green-700" },
     EXCEPTION: { label: "Exception", className: "bg-red-100 text-red-700" },
     CANCELLED: { label: "Cancelled", className: "bg-gray-100 text-gray-700" },
   };
 
-  const statusInfo = statusMap[status] || { 
-    label: status, 
-    className: "bg-gray-100 text-gray-700" 
+  const statusInfo = statusMap[status] || {
+    label: status,
+    className: "bg-gray-100 text-gray-700",
   };
 
   return (
@@ -111,15 +117,7 @@ const PickTasks = ({ onTaskSelect }) => {
       type: "select",
       label: "Zone",
       value: filters.zone,
-      options: [
-        "All",
-        "A",
-        "B",
-        "C",
-        "ZONE-A",
-        "ZONE-B",
-        "ZONE-C",
-      ],
+      options: ["All", "A", "B", "C", "ZONE-A", "ZONE-B", "ZONE-C"],
       className: "w-[180px]",
     },
     {
@@ -136,7 +134,7 @@ const PickTasks = ({ onTaskSelect }) => {
   const fetchPickTasks = async (page = 1) => {
     try {
       setLoading(true);
-      
+
       // Build query params
       const params = {
         page,
@@ -160,7 +158,7 @@ const PickTasks = ({ onTaskSelect }) => {
       }
 
       const response = await http.get("/pick-tasks/", { params });
-      
+
       if (response.data) {
         setTasks(response.data.tasks || []);
         setPagination({
@@ -192,7 +190,11 @@ const PickTasks = ({ onTaskSelect }) => {
 
   const getAssignedToName = (task) => {
     if (task.picker) {
-      return `${task.picker.first_name || ''} ${task.picker.last_name || ''}`.trim() || task.picker.username || `User ${task.assigned_to}`;
+      return (
+        `${task.picker.first_name || ""} ${task.picker.last_name || ""}`.trim() ||
+        task.picker.username ||
+        `User ${task.assigned_to}`
+      );
     }
     return task.assigned_to ? `User ${task.assigned_to}` : "Unassigned";
   };
@@ -202,6 +204,19 @@ const PickTasks = ({ onTaskSelect }) => {
       return `Zone ${task.sourceLocation.zone}`;
     }
     return task.wave?.zone_filter || "N/A";
+  };
+
+  const getActionLabel = (status) => {
+    if (status === "IN PROGRESS" || status === "IN_PROGRESS")
+      return "Complete Task";
+
+    if (status === "ASSIGNED") return "Start Task";
+
+    if (status === "PENDING") return "View";
+
+    if (status === "EXCEPTION") return "Resolve";
+
+    return "View Details";
   };
 
   const columns = [
@@ -275,13 +290,7 @@ const PickTasks = ({ onTaskSelect }) => {
                   : "text-blue-600 hover:text-blue-800 hover:bg-blue-50"
           }`}
         >
-          {r.status === "IN PROGRESS" || r.status === "IN_PROGRESS"
-            ? "Resume"
-            : r.status === "PENDING" || r.status === "ASSIGNED"
-              ? "Start Task"
-              : r.status === "EXCEPTION"
-                ? "Resolve"
-                : "View Details"}
+          {getActionLabel(r.status)}
         </button>
       ),
     },
@@ -315,11 +324,17 @@ const PickTasks = ({ onTaskSelect }) => {
   // Summary cards data
   const getTaskStats = () => {
     const total = tasks.length;
-    const pending = tasks.filter(t => t.status === "PENDING" || t.status === "ASSIGNED").length;
-    const inProgress = tasks.filter(t => t.status === "IN PROGRESS" || t.status === "IN_PROGRESS").length;
-    const completed = tasks.filter(t => t.status === "COMPLETED" || t.status === "DONE").length;
-    const exceptions = tasks.filter(t => t.status === "EXCEPTION").length;
-    
+    const pending = tasks.filter(
+      (t) => t.status === "PENDING" || t.status === "ASSIGNED",
+    ).length;
+    const inProgress = tasks.filter(
+      (t) => t.status === "IN PROGRESS" || t.status === "IN_PROGRESS",
+    ).length;
+    const completed = tasks.filter(
+      (t) => t.status === "COMPLETED" || t.status === "DONE",
+    ).length;
+    const exceptions = tasks.filter((t) => t.status === "EXCEPTION").length;
+
     return { total, pending, inProgress, completed, exceptions };
   };
 
@@ -333,67 +348,127 @@ const PickTasks = ({ onTaskSelect }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Total Tasks</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {stats.total}
+              </p>
             </div>
             <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
               </svg>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600 mt-1">{stats.pending}</p>
+              <p className="text-2xl font-bold text-yellow-600 mt-1">
+                {stats.pending}
+              </p>
             </div>
             <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">In Progress</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">{stats.inProgress}</p>
+              <p className="text-2xl font-bold text-blue-600 mt-1">
+                {stats.inProgress}
+              </p>
             </div>
             <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Completed</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">{stats.completed}</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">
+                {stats.completed}
+              </p>
             </div>
             <div className="p-3 rounded-full bg-green-100 text-green-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Exceptions</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">{stats.exceptions}</p>
+              <p className="text-2xl font-bold text-red-600 mt-1">
+                {stats.exceptions}
+              </p>
             </div>
             <div className="p-3 rounded-full bg-red-100 text-red-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
               </svg>
             </div>
           </div>
@@ -415,9 +490,9 @@ const PickTasks = ({ onTaskSelect }) => {
       ) : (
         <>
           <div className="rounded-lg border border-gray-200 bg-white">
-            <CusTable 
-              columns={columns} 
-              data={tasks} 
+            <CusTable
+              columns={columns}
+              data={tasks}
               pagination={pagination}
               onPageChange={handlePageChange}
               loading={loading}

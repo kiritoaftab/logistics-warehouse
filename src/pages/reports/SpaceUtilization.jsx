@@ -6,7 +6,7 @@ import PageHeader from "../components/PageHeader";
 import FilterBar from "../components/FilterBar";
 import StatCard from "../components/StatCard";
 import CusTable from "../components/CusTable";
-import { Badge, UtilBar } from "./components/helper";
+import { Badge, StatusPill, UtilBar } from "./components/helper";
 
 export default function SpaceUtilization() {
   const [zone, setZone] = useState("All Zones");

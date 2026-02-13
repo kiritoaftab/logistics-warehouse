@@ -1,28 +1,47 @@
 // pages/picking/PickTaskDetail.jsx
 import React, { useState, useEffect } from "react";
-import { X, ExternalLink, Clock, User, KeyRound, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  X,
+  ExternalLink,
+  Clock,
+  User,
+  KeyRound,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 import http from "../../api/http";
 import { format } from "date-fns";
+import { useToast } from "../components/toast/ToastProvider";
+import PaginatedEntityDropdown from "../inbound/components/asnform/common/PaginatedEntityDropdown";
 
 const StatusChip = ({ text }) => {
   const statusMap = {
-    "PENDING": { label: "Pending", className: "bg-gray-100 text-gray-600" },
-    "ASSIGNED": { label: "Assigned", className: "bg-blue-100 text-blue-700" },
-    "IN PROGRESS": { label: "In Progress", className: "bg-orange-100 text-orange-700" },
-    "IN_PROGRESS": { label: "In Progress", className: "bg-orange-100 text-orange-700" },
-    "COMPLETED": { label: "Completed", className: "bg-green-100 text-green-700" },
-    "DONE": { label: "Done", className: "bg-green-100 text-green-700" },
-    "EXCEPTION": { label: "Exception", className: "bg-red-100 text-red-700" },
-    "CANCELLED": { label: "Cancelled", className: "bg-gray-100 text-gray-700" },
-    "Current": { label: "Current", className: "bg-blue-100 text-blue-700" },
-    "Done": { label: "Done", className: "bg-green-100 text-green-700" },
-    "In Progress": { label: "In Progress", className: "bg-orange-100 text-orange-700" },
-    "Pending": { label: "Pending", className: "bg-gray-100 text-gray-600" },
+    PENDING: { label: "Pending", className: "bg-gray-100 text-gray-600" },
+    ASSIGNED: { label: "Assigned", className: "bg-blue-100 text-blue-700" },
+    "IN PROGRESS": {
+      label: "In Progress",
+      className: "bg-orange-100 text-orange-700",
+    },
+    IN_PROGRESS: {
+      label: "In Progress",
+      className: "bg-orange-100 text-orange-700",
+    },
+    COMPLETED: { label: "Completed", className: "bg-green-100 text-green-700" },
+    DONE: { label: "Done", className: "bg-green-100 text-green-700" },
+    EXCEPTION: { label: "Exception", className: "bg-red-100 text-red-700" },
+    CANCELLED: { label: "Cancelled", className: "bg-gray-100 text-gray-700" },
+    Current: { label: "Current", className: "bg-blue-100 text-blue-700" },
+    Done: { label: "Done", className: "bg-green-100 text-green-700" },
+    "In Progress": {
+      label: "In Progress",
+      className: "bg-orange-100 text-orange-700",
+    },
+    Pending: { label: "Pending", className: "bg-gray-100 text-gray-600" },
   };
 
-  const statusInfo = statusMap[text] || { 
-    label: text, 
-    className: "bg-gray-100 text-gray-700" 
+  const statusInfo = statusMap[text] || {
+    label: text,
+    className: "bg-gray-100 text-gray-700",
   };
 
   return (
@@ -57,6 +76,8 @@ const StepBadge = ({ state, index }) => {
 };
 
 const PickTaskDetail = ({ taskId, onClose, onBack }) => {
+  const toast = useToast();
+
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,11 +86,23 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
   const [qty, setQty] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const [selectedUser, setSelectedUser] = useState("");
+  const [assigning, setAssigning] = useState(false);
+
   useEffect(() => {
     if (taskId) {
       fetchTaskDetails();
     }
   }, [taskId]);
+
+  useEffect(() => {
+    if (
+      task &&
+      (task.status === "IN PROGRESS" || task.status === "IN_PROGRESS")
+    ) {
+      setQty(task.qty_to_pick || "");
+    }
+  }, [task]);
 
   const fetchTaskDetails = async () => {
     try {
@@ -77,9 +110,12 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
       setError(null);
       const response = await http.get(`/pick-tasks/${taskId}`);
       setTask(response.data);
-      
+
       // Pre-fill bin scan with source location if task is in progress
-      if (response.data.status === "IN PROGRESS" || response.data.status === "IN_PROGRESS") {
+      if (
+        response.data.status === "IN PROGRESS" ||
+        response.data.status === "IN_PROGRESS"
+      ) {
         setBinScan(response.data.sourceLocation?.location_code || "");
       }
     } catch (err) {
@@ -105,10 +141,10 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
       const start = new Date(startTime);
       const now = new Date();
       const diffInSeconds = Math.floor((now - start) / 1000);
-      
+
       const minutes = Math.floor(diffInSeconds / 60);
       const seconds = diffInSeconds % 60;
-      
+
       return `${minutes}m ${seconds}s`;
     } catch {
       return "N/A";
@@ -116,59 +152,32 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
   };
 
   const handleCompleteTask = async () => {
-    // Validate inputs
-    if (!binScan.trim()) {
-      alert("Please scan bin location");
-      return;
-    }
-    
-    if (!skuScan.trim()) {
-      alert("Please scan SKU");
-      return;
-    }
-    
     if (!qty || parseFloat(qty) <= 0) {
-      alert("Please enter valid quantity");
+      alert("Enter valid quantity");
       return;
     }
 
-    // Validate against expected values
-    if (binScan !== task.sourceLocation?.location_code) {
-      alert(`Error: Wrong bin location! Expected: ${task.sourceLocation?.location_code}`);
-      return;
-    }
-
-    if (skuScan !== task.orderLine?.sku?.sku_code) {
-      alert(`Error: Wrong SKU! Expected: ${task.orderLine?.sku?.sku_code}`);
-      return;
-    }
-
-    if (parseFloat(qty) > parseFloat(task.qty_to_pick)) {
-      alert(`Error: Quantity exceeds required amount! Max: ${task.qty_to_pick}`);
+    if (parseFloat(qty) !== parseFloat(task.qty_to_pick)) {
+      alert("Quantity must match required amount for full completion");
       return;
     }
 
     try {
       setSubmitting(true);
-      
-      // API call to complete the task
+
       const response = await http.post(`/pick-tasks/${taskId}/complete`, {
         qty_picked: parseFloat(qty),
-        location_code: binScan,
-        sku_code: skuScan,
-        completed_at: new Date().toISOString()
+        short_pick_reason: "",
+        short_pick_notes: "",
       });
 
       if (response.data) {
-        alert("Task completed successfully!");
-        // Refresh task details
+        toast.success("Task completed successfully!");
         fetchTaskDetails();
-        // Clear form
-        setSkuScan("");
         setQty("");
       }
     } catch (err) {
-      console.error("Error completing task:", err);
+      console.error(err);
       alert(err.response?.data?.message || "Failed to complete task");
     } finally {
       setSubmitting(false);
@@ -178,16 +187,16 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
   const handleRaiseException = async () => {
     const reason = prompt("Enter exception reason (Shortage/Damage/Other):");
     if (!reason) return;
-    
+
     const notes = prompt("Enter notes (optional):");
-    
+
     try {
       setSubmitting(true);
-      
+
       const response = await http.post(`/pick-tasks/${taskId}/exception`, {
         reason,
         notes: notes || "",
-        qty_short: parseFloat(task.qty_to_pick) - parseFloat(qty || 0)
+        qty_short: parseFloat(task.qty_to_pick) - parseFloat(qty || 0),
       });
 
       if (response.data) {
@@ -204,48 +213,105 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
 
   const handlePartialPick = async () => {
     if (!qty || parseFloat(qty) <= 0) {
-      alert("Please enter quantity to pick");
+      alert("Enter picked quantity");
       return;
     }
 
+    if (parseFloat(qty) >= parseFloat(task.qty_to_pick)) {
+      alert("Use Complete Task for full quantity");
+      return;
+    }
+
+    const reason = prompt("Enter short pick reason:");
+    if (!reason) {
+      alert("Reason is required for partial pick");
+      return;
+    }
+
+    const notes = prompt("Enter short pick notes:");
+
     try {
       setSubmitting(true);
-      
-      const response = await http.post(`/pick-tasks/${taskId}/partial`, {
+
+      const response = await http.post(`/pick-tasks/${taskId}/complete`, {
         qty_picked: parseFloat(qty),
-        location_code: binScan,
-        sku_code: skuScan
+        short_pick_reason: reason,
+        short_pick_notes: notes || "",
       });
 
       if (response.data) {
         alert("Partial pick recorded successfully!");
         fetchTaskDetails();
-        setSkuScan("");
         setQty("");
       }
     } catch (err) {
-      console.error("Error recording partial pick:", err);
+      console.error(err);
       alert(err.response?.data?.message || "Failed to record partial pick");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleSelfAssign = async () => {
+    try {
+      setAssigning(true);
+
+      await http.post(`/pick-tasks/self-assign`, {
+        wave_id: task.wave?.id,
+      });
+
+      toast.success("Task assigned to you");
+      fetchTaskDetails();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Self assign failed");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleAssignToUser = async () => {
+    if (!selectedUser) {
+      toast.error("Select a user");
+      return;
+    }
+
+    try {
+      setAssigning(true);
+
+      await http.post(`/pick-tasks/assign`, {
+        task_ids: [task.id],
+        user_id: selectedUser,
+      });
+
+      toast.success("Task assigned successfully");
+      fetchTaskDetails();
+      setSelectedUser("");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Assignment failed");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   // Create task steps from the pick sequence
   const getTaskSteps = () => {
     if (!task) return [];
-    
+
     // Since we only have one task, we create a single step
     // In a real scenario, you might have multiple pick tasks in a sequence
     const status = task.status;
     let stepState = "pending";
-    
+
     if (status === "COMPLETED" || status === "DONE") {
       stepState = "done";
-    } else if (status === "IN PROGRESS" || status === "IN_PROGRESS" || status === "ASSIGNED") {
+    } else if (
+      status === "IN PROGRESS" ||
+      status === "IN_PROGRESS" ||
+      status === "ASSIGNED"
+    ) {
       stepState = "current";
     }
-    
+
     return [
       {
         idx: 1,
@@ -256,8 +322,30 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
         req: parseFloat(task.qty_to_pick).toFixed(0),
         picked: parseFloat(task.qty_picked).toFixed(0),
         status: task.status,
-      }
+      },
     ];
+  };
+
+  const handleStartTask = async () => {
+    try {
+      setSubmitting(true);
+
+      const response = await http.post(`/pick-tasks/${taskId}/start`);
+
+      if (response.data) {
+        toast.success("Task started successfully!");
+        fetchTaskDetails();
+      }
+    } catch (err) {
+      console.error("Error starting task:", err);
+      toast.error(
+        err.response?.data?.message ||
+          err.response?.data?.error ||
+          "Failed to start task",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -292,8 +380,10 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
 
   const steps = getTaskSteps();
   const currentStep = steps[0];
+  const isPending = task.status === "PENDING";
+  const isAssigned = task.status === "ASSIGNED";
   const isCompleted = task.status === "COMPLETED" || task.status === "DONE";
-  const isInProgress = task.status === "IN PROGRESS" || task.status === "IN_PROGRESS" || task.status === "ASSIGNED";
+  const isInProgress = task.status === "IN_PROGRESS";
 
   return (
     <div className="min-h-screen bg-[#E9F1FB] p-6">
@@ -301,15 +391,19 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
         {/* Top bar */}
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <div className="text-xs text-gray-500">
-              <span className="hover:text-gray-700 cursor-pointer">Picking</span>{" "}
+            {/* <div className="text-xs text-gray-500">
+              <span className="hover:text-gray-700 cursor-pointer">
+                Picking
+              </span>{" "}
               <span className="mx-1">›</span>
-              <span className="hover:text-gray-700 cursor-pointer">Tasks</span>{" "}
+              <span className="hover:text-gray-700 cursor-pointer">
+                Tasks
+              </span>{" "}
               <span className="mx-1">›</span>
               <span className="font-semibold text-gray-700">
                 Task #{task.task_no}
               </span>
-            </div>
+            </div> */}
 
             <div className="text-2xl font-semibold text-gray-900">
               Pick Task Detail
@@ -319,42 +413,77 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
           <div className="flex items-center gap-3">
             <StatusChip text={task.status} />
 
-            <button
+            {/* <button
               type="button"
               className="rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
               Save Progress
-            </button>
+            </button> */}
+            {isPending && (
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleSelfAssign}
+                  disabled={assigning}
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Self Assign
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAssignToUser}
+                  disabled={assigning || !selectedUser}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Assign To
+                </button>
+                <div className="w-60">
+                  <PaginatedEntityDropdown
+                    endpoint="/users"
+                    listKey="users"
+                    value={selectedUser}
+                    onChange={(val) => setSelectedUser(val)}
+                    placeholder="Assign to user"
+                    enableSearch
+                    searchParam="search"
+                    renderItem={(u) => ({
+                      title: `${u.first_name} ${u.last_name}` || u.username,
+                      subtitle: u.email,
+                    })}
+                  />
+                </div>
+              </div>
+            )}
 
-            {!isCompleted && (
+            {isAssigned && (
               <button
                 type="button"
-                onClick={handleCompleteTask}
+                onClick={handleStartTask}
                 disabled={submitting}
-                className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {submitting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Processing...
+                    Starting...
                   </>
                 ) : (
                   <>
                     <CheckCircle size={16} />
-                    Complete Task
+                    Start Task
                   </>
                 )}
               </button>
             )}
 
-            <button
+            {/* <button
               type="button"
               onClick={onClose}
               className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
               title="Close"
             >
               <X size={16} />
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -385,18 +514,25 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
             <div>
               <div className="text-xs font-medium text-gray-500">Zone</div>
               <div className="text-sm font-semibold text-gray-900">
-                {task.sourceLocation?.zone ? `Zone ${task.sourceLocation.zone}` : task.wave?.zone_filter || "N/A"}
+                {task.sourceLocation?.zone
+                  ? `Zone ${task.sourceLocation.zone}`
+                  : task.wave?.zone_filter || "N/A"}
               </div>
             </div>
 
             <div>
-              <div className="text-xs font-medium text-gray-500">Assigned To</div>
+              <div className="text-xs font-medium text-gray-500">
+                Assigned To
+              </div>
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center">
                   <User size={12} className="text-gray-600" />
                 </div>
                 <div className="text-sm font-semibold text-gray-900">
-                  {task.picker ? `${task.picker.first_name} ${task.picker.last_name}`.trim() || task.picker.username : `User ${task.assigned_to || "N/A"}`}
+                  {task.picker
+                    ? `${task.picker.first_name} ${task.picker.last_name}`.trim() ||
+                      task.picker.username
+                    : `User ${task.assigned_to || "N/A"}`}
                 </div>
               </div>
             </div>
@@ -408,7 +544,8 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
                 Order / SKU
               </div>
               <div className="text-sm font-semibold text-gray-900">
-                {task.order?.order_no || "N/A"} • {task.orderLine?.sku?.sku_name || "N/A"}
+                {task.order?.order_no || "N/A"} •{" "}
+                {task.orderLine?.sku?.sku_name || "N/A"}
               </div>
             </div>
 
@@ -418,7 +555,9 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
               </div>
               <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <Clock size={14} className="text-gray-400" />
-                {formatTimeElapsed(task.pick_started_at || task.assigned_at || task.createdAt)}
+                {formatTimeElapsed(
+                  task.pick_started_at || task.assigned_at || task.createdAt,
+                )}
               </div>
             </div>
           </div>
@@ -571,11 +710,12 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
                     }`}
                     placeholder="Scan bin location..."
                   />
-                  {binScan && binScan !== task.sourceLocation?.location_code && (
-                    <p className="mt-1 text-xs text-red-600">
-                      Expected: {task.sourceLocation?.location_code}
-                    </p>
-                  )}
+                  {binScan &&
+                    binScan !== task.sourceLocation?.location_code && (
+                      <p className="mt-1 text-xs text-red-600">
+                        Expected: {task.sourceLocation?.location_code}
+                      </p>
+                    )}
                 </div>
 
                 <div>
@@ -622,7 +762,7 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
         </div>
 
         {/* Action Buttons */}
-        {!isCompleted && (
+        {isInProgress && (
           <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
             <button
               onClick={handleCompleteTask}
@@ -641,7 +781,7 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
                 </>
               )}
             </button>
-            
+
             <button
               onClick={handleRaiseException}
               disabled={submitting}
@@ -649,7 +789,7 @@ const PickTaskDetail = ({ taskId, onClose, onBack }) => {
             >
               Raise Exception
             </button>
-            
+
             <button
               onClick={handlePartialPick}
               disabled={submitting || !qty || parseFloat(qty) <= 0}
