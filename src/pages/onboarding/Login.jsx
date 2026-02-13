@@ -8,7 +8,7 @@ import { useAuth } from "../utils/AuthProvider";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { refreshPermissions } = useAuth();
+  const { refreshPermissions, setUserSession } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,10 +38,9 @@ const Login = () => {
       const { success, message, data } = res.data;
 
       if (success) {
-        // ✅ STORE IN SESSION STORAGE
         sessionStorage.setItem("auth_token", data.token);
         sessionStorage.setItem("user", JSON.stringify(data.user));
-        // ✅ hit permissions API right after login
+        setUserSession(data.user);
         const result = await refreshPermissions({ force: true });
 
         if (!result.ok) {
