@@ -43,39 +43,43 @@ export function useSalesOrders(toast) {
     try {
       // Fetch warehouses
       const warehousesRes = await http.get("/warehouses");
-      const warehouses = warehousesRes.data?.success ? warehousesRes.data.data || [] : [];
-      
+      const warehouses = warehousesRes.data?.success
+        ? warehousesRes.data.data || []
+        : [];
+
       // Fetch clients (you might need to adjust this endpoint)
       const clientsRes = await http.get("/clients");
-      const clients = clientsRes.data?.success ? clientsRes.data.data || [] : [];
-      
+      const clients = clientsRes.data?.success
+        ? clientsRes.data.data || []
+        : [];
+
       // Transform data for dropdowns
       const warehousesOptions = [
         { value: "All", label: "All Warehouses" },
-        ...warehouses.map(w => ({
+        ...warehouses.map((w) => ({
           value: String(w.id),
           label: `${w.warehouse_code} - ${w.warehouse_name}`,
         })),
       ];
-      
+
       const clientsOptions = [
         { value: "All", label: "All Clients" },
-        ...clients.map(c => ({
+        ...clients.map((c) => ({
           value: String(c.id),
           label: `${c.client_code} - ${c.client_name}`,
         })),
       ];
-      
+
       setDropdownData({
         warehouses: warehousesOptions,
         clients: clientsOptions,
       });
-      
+
       // Auto-select first warehouse if available
       if (warehousesOptions.length > 1) {
-        setF(prev => ({
+        setF((prev) => ({
           ...prev,
-          warehouse_id: warehousesOptions[1].value
+          warehouse_id: warehousesOptions[1].value,
         }));
       }
     } catch (error) {
@@ -90,34 +94,34 @@ export function useSalesOrders(toast) {
   const fetchSalesOrders = async () => {
     try {
       setLoading(true);
-      
+
       const params = new URLSearchParams();
-      
+
       // Only add if not "All"
       if (f.warehouse_id !== "All") {
         params.append("warehouse_id", f.warehouse_id);
       }
-      
+
       if (f.client_id !== "All") {
         params.append("client_id", f.client_id);
       }
-      
+
       if (f.status !== "All") {
         params.append("status", f.status);
       }
-      
+
       params.append("page", f.page);
       params.append("limit", f.limit);
-      
+
       const url = `/sales-orders/?${params.toString()}`;
       console.log("Fetching sales orders from:", url);
-      
+
       const res = await http.get(url);
-      
+
       if (res.data) {
         const orders = res.data.orders || [];
         setData(orders);
-        
+
         // Update pagination from API response
         setPagination({
           total: res.data.total || 0,
@@ -137,7 +141,9 @@ export function useSalesOrders(toast) {
     } catch (e) {
       console.error("Sales orders error:", e);
       setData([]);
-      toast?.error?.(e.response?.data?.message || "Failed to load sales orders");
+      toast?.error?.(
+        e.response?.data?.message || "Failed to load sales orders",
+      );
     } finally {
       setLoading(false);
     }
@@ -146,18 +152,18 @@ export function useSalesOrders(toast) {
   const fetchStats = async () => {
     try {
       const params = new URLSearchParams();
-      
+
       if (f.warehouse_id !== "All") {
         params.append("warehouse_id", f.warehouse_id);
       }
-      
+
       if (f.client_id !== "All") {
         params.append("client_id", f.client_id);
       }
-      
+
       const url = `/sales-orders/stats?${params.toString()}`;
       const res = await http.get(url);
-      
+
       if (res.data) {
         setStats(res.data);
       }
@@ -168,7 +174,7 @@ export function useSalesOrders(toast) {
   };
 
   const handlePageChange = (newPage) => {
-    setF(prev => ({ ...prev, page: newPage }));
+    setF((prev) => ({ ...prev, page: newPage }));
   };
 
   const filters = useMemo(

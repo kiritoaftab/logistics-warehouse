@@ -5,6 +5,8 @@ import { Pencil, Trash2, RefreshCw, Anchor, Eye, Plus } from "lucide-react";
 import http from "../../../api/http";
 import toast from "react-hot-toast";
 import AddEditDockModal from "./modals/AddEditDockModal";
+import { getUserRole } from "../../utils/authStorage";
+import { useAccess } from "../../utils/useAccess";
 
 const DockTab = () => {
   const [docks, setDocks] = useState([]);
@@ -483,7 +485,7 @@ const DockTab = () => {
               />
               {refreshing ? "Refreshing..." : "Refresh"}
             </button>
-            {canUpdate && (
+            {canCreate && (
               <button
                 type="button"
                 onClick={handleAddDock}

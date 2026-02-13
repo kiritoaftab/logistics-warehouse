@@ -309,7 +309,7 @@ const CreateSalesOrder = () => {
     try {
       if (!isEdit) {
         await http.post("/sales-orders", payload);
-        toast.success("Draft created");
+        toast.success("Order created as Draft");
         navigate("/outbound");
       } else {
         await http.put(`/sales-orders/${id}`, payload);
@@ -343,13 +343,14 @@ const CreateSalesOrder = () => {
     try {
       if (!isEdit) {
         const { data } = await http.post("/sales-orders", payload);
-        orderId = data.id;
+        console.log(data);
+        orderId = data?.order.id;
       } else {
         await http.put(`/sales-orders/${id}`, payload);
       }
 
       await http.post(`/sales-orders/${orderId}/confirm`);
-      toast.success("Order confirmed");
+      toast.success("Order created as confirmed");
       navigate("/outbound");
     } catch (e) {
       toast.error(e.response?.data?.error || "Failed to confirm order");
