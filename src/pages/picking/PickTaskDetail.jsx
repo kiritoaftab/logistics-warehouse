@@ -1,36 +1,48 @@
-// picking/PickTaskDetail.jsx
-import React, { useMemo, useState } from "react";
-import { X, ExternalLink, Clock, User, KeyRound } from "lucide-react";
+// pages/picking/PickTaskDetail.jsx
+import React, { useState, useEffect } from "react";
+import { X, ExternalLink, Clock, User, KeyRound, CheckCircle, AlertCircle } from "lucide-react";
+import http from "../../api/http";
+import { format } from "date-fns";
 
 const StatusChip = ({ text }) => {
-  const map = {
-    "In Progress": "bg-orange-100 text-orange-700",
-    Done: "bg-green-100 text-green-700",
-    Current: "bg-blue-100 text-blue-700",
-    Pending: "bg-gray-100 text-gray-600",
+  const statusMap = {
+    "PENDING": { label: "Pending", className: "bg-gray-100 text-gray-600" },
+    "ASSIGNED": { label: "Assigned", className: "bg-blue-100 text-blue-700" },
+    "IN PROGRESS": { label: "In Progress", className: "bg-orange-100 text-orange-700" },
+    "IN_PROGRESS": { label: "In Progress", className: "bg-orange-100 text-orange-700" },
+    "COMPLETED": { label: "Completed", className: "bg-green-100 text-green-700" },
+    "DONE": { label: "Done", className: "bg-green-100 text-green-700" },
+    "EXCEPTION": { label: "Exception", className: "bg-red-100 text-red-700" },
+    "CANCELLED": { label: "Cancelled", className: "bg-gray-100 text-gray-700" },
+    "Current": { label: "Current", className: "bg-blue-100 text-blue-700" },
+    "Done": { label: "Done", className: "bg-green-100 text-green-700" },
+    "In Progress": { label: "In Progress", className: "bg-orange-100 text-orange-700" },
+    "Pending": { label: "Pending", className: "bg-gray-100 text-gray-600" },
   };
+
+  const statusInfo = statusMap[text] || { 
+    label: text, 
+    className: "bg-gray-100 text-gray-700" 
+  };
+
   return (
     <span
-      className={[
-        "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold",
-        map[text] || "bg-gray-100 text-gray-700",
-      ].join(" ")}
+      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.className}`}
     >
-      {text}
+      {statusInfo.label}
     </span>
   );
 };
 
 const StepBadge = ({ state, index }) => {
-  // state: done | current | pending
-  if (state === "done") {
+  if (state === "done" || state === "completed") {
     return (
       <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-600 text-white text-xs font-bold">
         ✓
       </div>
     );
   }
-  if (state === "current") {
+  if (state === "current" || state === "in_progress") {
     return (
       <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold">
         {index}
@@ -44,125 +56,258 @@ const StepBadge = ({ state, index }) => {
   );
 };
 
-const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
-  const [binScan, setBinScan] = useState("A-02-04"); // matches screenshot (green filled)
+const PickTaskDetail = ({ taskId, onClose, onBack }) => {
+  const [task, setTask] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [binScan, setBinScan] = useState("");
   const [skuScan, setSkuScan] = useState("");
   const [qty, setQty] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const taskInfo = useMemo(
-    () => ({
-      taskId,
-      waveId: "WV-502",
-      client: "Acme Corp",
-      zone: "Z1-HighRack",
-      assignedTo: "John Doe",
-      orders: "5 Orders • 12 Lines",
-      timeElapsed: "12m 30s",
-      status: "In Progress",
-    }),
-    [taskId],
-  );
+  useEffect(() => {
+    if (taskId) {
+      fetchTaskDetails();
+    }
+  }, [taskId]);
 
-  const steps = useMemo(
-    () => [
+  const fetchTaskDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await http.get(`/pick-tasks/${taskId}`);
+      setTask(response.data);
+      
+      // Pre-fill bin scan with source location if task is in progress
+      if (response.data.status === "IN PROGRESS" || response.data.status === "IN_PROGRESS") {
+        setBinScan(response.data.sourceLocation?.location_code || "");
+      }
+    } catch (err) {
+      console.error("Error fetching task details:", err);
+      setError(err.response?.data?.message || "Failed to load task details");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "dd MMM yyyy, HH:mm");
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatTimeElapsed = (startTime) => {
+    if (!startTime) return "0m 0s";
+    try {
+      const start = new Date(startTime);
+      const now = new Date();
+      const diffInSeconds = Math.floor((now - start) / 1000);
+      
+      const minutes = Math.floor(diffInSeconds / 60);
+      const seconds = diffInSeconds % 60;
+      
+      return `${minutes}m ${seconds}s`;
+    } catch {
+      return "N/A";
+    }
+  };
+
+  const handleCompleteTask = async () => {
+    // Validate inputs
+    if (!binScan.trim()) {
+      alert("Please scan bin location");
+      return;
+    }
+    
+    if (!skuScan.trim()) {
+      alert("Please scan SKU");
+      return;
+    }
+    
+    if (!qty || parseFloat(qty) <= 0) {
+      alert("Please enter valid quantity");
+      return;
+    }
+
+    // Validate against expected values
+    if (binScan !== task.sourceLocation?.location_code) {
+      alert(`Error: Wrong bin location! Expected: ${task.sourceLocation?.location_code}`);
+      return;
+    }
+
+    if (skuScan !== task.orderLine?.sku?.sku_code) {
+      alert(`Error: Wrong SKU! Expected: ${task.orderLine?.sku?.sku_code}`);
+      return;
+    }
+
+    if (parseFloat(qty) > parseFloat(task.qty_to_pick)) {
+      alert(`Error: Quantity exceeds required amount! Max: ${task.qty_to_pick}`);
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // API call to complete the task
+      const response = await http.post(`/pick-tasks/${taskId}/complete`, {
+        qty_picked: parseFloat(qty),
+        location_code: binScan,
+        sku_code: skuScan,
+        completed_at: new Date().toISOString()
+      });
+
+      if (response.data) {
+        alert("Task completed successfully!");
+        // Refresh task details
+        fetchTaskDetails();
+        // Clear form
+        setSkuScan("");
+        setQty("");
+      }
+    } catch (err) {
+      console.error("Error completing task:", err);
+      alert(err.response?.data?.message || "Failed to complete task");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRaiseException = async () => {
+    const reason = prompt("Enter exception reason (Shortage/Damage/Other):");
+    if (!reason) return;
+    
+    const notes = prompt("Enter notes (optional):");
+    
+    try {
+      setSubmitting(true);
+      
+      const response = await http.post(`/pick-tasks/${taskId}/exception`, {
+        reason,
+        notes: notes || "",
+        qty_short: parseFloat(task.qty_to_pick) - parseFloat(qty || 0)
+      });
+
+      if (response.data) {
+        alert("Exception logged successfully!");
+        fetchTaskDetails();
+      }
+    } catch (err) {
+      console.error("Error raising exception:", err);
+      alert(err.response?.data?.message || "Failed to raise exception");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePartialPick = async () => {
+    if (!qty || parseFloat(qty) <= 0) {
+      alert("Please enter quantity to pick");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      const response = await http.post(`/pick-tasks/${taskId}/partial`, {
+        qty_picked: parseFloat(qty),
+        location_code: binScan,
+        sku_code: skuScan
+      });
+
+      if (response.data) {
+        alert("Partial pick recorded successfully!");
+        fetchTaskDetails();
+        setSkuScan("");
+        setQty("");
+      }
+    } catch (err) {
+      console.error("Error recording partial pick:", err);
+      alert(err.response?.data?.message || "Failed to record partial pick");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Create task steps from the pick sequence
+  const getTaskSteps = () => {
+    if (!task) return [];
+    
+    // Since we only have one task, we create a single step
+    // In a real scenario, you might have multiple pick tasks in a sequence
+    const status = task.status;
+    let stepState = "pending";
+    
+    if (status === "COMPLETED" || status === "DONE") {
+      stepState = "done";
+    } else if (status === "IN PROGRESS" || status === "IN_PROGRESS" || status === "ASSIGNED") {
+      stepState = "current";
+    }
+    
+    return [
       {
         idx: 1,
-        state: "done",
-        bin: "A-01-01",
-        sku: "SKU-101",
-        skuSub: "Widget Blue",
-        req: 10,
-        picked: 10,
-        status: "Done",
-      },
-      {
-        idx: 2,
-        state: "current",
-        bin: "A-02-04",
-        sku: "SKU-500",
-        skuSub: "Gadget Pro Max",
-        req: 5,
-        picked: 0,
-        status: "Current",
-      },
-      {
-        idx: 3,
-        state: "pending",
-        bin: "B-05-02",
-        sku: "SKU-205",
-        skuSub: "Accessory Kit",
-        req: 20,
-        picked: 0,
-        status: "Pending",
-      },
-      {
-        idx: 4,
-        state: "pending",
-        bin: "B-05-03",
-        sku: "SKU-205",
-        skuSub: "Accessory Kit",
-        req: 15,
-        picked: 0,
-        status: "Pending",
-      },
-    ],
-    [],
-  );
-
-  const current = steps.find((s) => s.state === "current") || steps[0];
-
-  const handleConfirmPick = () => {
-    if (binScan !== "A-02-04") {
-      alert("Error: Wrong bin location!");
-      return;
-    }
-    if (skuScan !== "SKU-500") {
-      alert("Error: Wrong SKU!");
-      return;
-    }
-
-    console.log("Pick confirmed:", { binScan, skuScan, quantity });
-    setCurrentStep(3);
-    setBinScan("");
-    setSkuScan("");
-    setQuantity("");
+        state: stepState,
+        bin: task.sourceLocation?.location_code || "N/A",
+        sku: task.orderLine?.sku?.sku_code || "N/A",
+        skuSub: task.orderLine?.sku?.sku_name || "N/A",
+        req: parseFloat(task.qty_to_pick).toFixed(0),
+        picked: parseFloat(task.qty_picked).toFixed(0),
+        status: task.status,
+      }
+    ];
   };
 
-  const handleRaiseException = () => {
-    const reason = prompt("Enter exception reason (Shortage/Damage/Other):");
-    if (reason) {
-      const notes = prompt("Enter notes:");
-      console.log("Exception raised:", { reason, notes });
-      alert("Exception logged. Task marked as Exception.");
-    }
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#E9F1FB] p-6 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
-  const getStepIcon = (stepIndex) => {
-    if (stepIndex < currentStep - 1) {
-      return <CheckCircle className="text-green-500" size={16} />;
-    }
-    if (stepIndex === currentStep - 1) {
-      return <Key className="text-orange-500" size={16} />;
-    }
-    return <div className="w-4 h-4 rounded-full border border-gray-300"></div>;
-  };
+  if (error || !task) {
+    return (
+      <div className="min-h-screen bg-[#E9F1FB] p-6">
+        <div className="mx-auto 2xl:max-w-[1900px]">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <div className="flex items-center gap-3 text-red-800 mb-4">
+              <AlertCircle size={24} />
+              <h3 className="text-lg font-semibold">Error Loading Task</h3>
+            </div>
+            <p className="text-red-700 mb-4">{error || "Task not found"}</p>
+            <button
+              onClick={onBack || onClose}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const steps = getTaskSteps();
+  const currentStep = steps[0];
+  const isCompleted = task.status === "COMPLETED" || task.status === "DONE";
+  const isInProgress = task.status === "IN PROGRESS" || task.status === "IN_PROGRESS" || task.status === "ASSIGNED";
+
   return (
     <div className="min-h-screen bg-[#E9F1FB] p-6">
       <div className="mx-auto 2xl:max-w-[1900px] space-y-4">
-        {/* Top bar (breadcrumb + right actions) */}
+        {/* Top bar */}
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <div className="text-xs text-gray-500">
-              <span className="hover:text-gray-700 cursor-pointer">
-                Picking
-              </span>{" "}
+              <span className="hover:text-gray-700 cursor-pointer">Picking</span>{" "}
               <span className="mx-1">›</span>
-              <span className="hover:text-gray-700 cursor-pointer">
-                Tasks
-              </span>{" "}
+              <span className="hover:text-gray-700 cursor-pointer">Tasks</span>{" "}
               <span className="mx-1">›</span>
               <span className="font-semibold text-gray-700">
-                Task #{taskInfo.taskId}
+                Task #{task.task_no}
               </span>
             </div>
 
@@ -172,26 +317,40 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
           </div>
 
           <div className="flex items-center gap-3">
-            <StatusChip text={taskInfo.status} />
+            <StatusChip text={task.status} />
 
             <button
               type="button"
-              className="rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700"
+              className="rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
               Save Progress
             </button>
 
-            <button
-              type="button"
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
-            >
-              Complete Task
-            </button>
+            {!isCompleted && (
+              <button
+                type="button"
+                onClick={handleCompleteTask}
+                disabled={submitting}
+                className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={16} />
+                    Complete Task
+                  </>
+                )}
+              </button>
+            )}
 
             <button
               type="button"
               onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600"
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
               title="Close"
             >
               <X size={16} />
@@ -199,45 +358,45 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
           </div>
         </div>
 
-        {/* Info card (single wide card like Figma) */}
+        {/* Info card */}
         <div className="rounded-lg border border-gray-200 bg-white p-5">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
             <div>
               <div className="text-xs font-medium text-gray-500">Task ID</div>
               <div className="text-sm font-semibold text-gray-900">
-                {taskInfo.taskId}
+                {task.task_no}
               </div>
             </div>
 
             <div>
               <div className="text-xs font-medium text-gray-500">Wave ID</div>
               <div className="text-sm font-semibold text-blue-600">
-                {taskInfo.waveId}
+                {task.wave?.wave_no || "N/A"}
               </div>
             </div>
 
             <div>
               <div className="text-xs font-medium text-gray-500">Client</div>
               <div className="text-sm font-semibold text-gray-900">
-                {taskInfo.client}
+                Client {task.order?.client_id || "N/A"}
               </div>
             </div>
 
             <div>
               <div className="text-xs font-medium text-gray-500">Zone</div>
               <div className="text-sm font-semibold text-gray-900">
-                {taskInfo.zone}
+                {task.sourceLocation?.zone ? `Zone ${task.sourceLocation.zone}` : task.wave?.zone_filter || "N/A"}
               </div>
             </div>
 
             <div>
-              <div className="text-xs font-medium text-gray-500">
-                Assigned To
-              </div>
+              <div className="text-xs font-medium text-gray-500">Assigned To</div>
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-gray-200" />
+                <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center">
+                  <User size={12} className="text-gray-600" />
+                </div>
                 <div className="text-sm font-semibold text-gray-900">
-                  {taskInfo.assignedTo}
+                  {task.picker ? `${task.picker.first_name} ${task.picker.last_name}`.trim() || task.picker.username : `User ${task.assigned_to || "N/A"}`}
                 </div>
               </div>
             </div>
@@ -246,10 +405,10 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-5">
             <div className="md:col-span-2">
               <div className="text-xs font-medium text-gray-500">
-                Orders / Lines
+                Order / SKU
               </div>
               <div className="text-sm font-semibold text-gray-900">
-                {taskInfo.orders}
+                {task.order?.order_no || "N/A"} • {task.orderLine?.sku?.sku_name || "N/A"}
               </div>
             </div>
 
@@ -259,7 +418,7 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
               </div>
               <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <Clock size={14} className="text-gray-400" />
-                {taskInfo.timeElapsed}
+                {formatTimeElapsed(task.pick_started_at || task.assigned_at || task.createdAt)}
               </div>
             </div>
           </div>
@@ -271,7 +430,7 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
           <div className="lg:col-span-2 rounded-lg border border-gray-200 bg-white">
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
               <div className="text-sm font-semibold text-gray-900">
-                Pick Steps (12)
+                Pick Steps
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700">
                 <KeyRound size={14} className="text-gray-500" />
@@ -298,12 +457,8 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
                     return (
                       <tr
                         key={s.idx}
-                        className={[
-                          "relative",
-                          isCurrent ? "bg-blue-50" : "bg-white",
-                        ].join(" ")}
+                        className={`relative ${isCurrent ? "bg-blue-50" : "bg-white"}`}
                       >
-                        {/* left blue highlight bar for current row */}
                         {isCurrent && (
                           <td
                             className="absolute left-0 top-0 h-full w-1 bg-blue-600"
@@ -329,9 +484,7 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
                         </td>
 
                         <td className="px-5 py-4 text-gray-900">{s.req}</td>
-
                         <td className="px-5 py-4 text-gray-900">{s.picked}</td>
-
                         <td className="px-5 py-4">
                           <StatusChip text={s.status} />
                         </td>
@@ -347,7 +500,7 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
           <div className="rounded-lg border border-gray-200 bg-white">
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
               <div className="text-sm font-semibold text-gray-900">
-                Scan &amp; Confirm
+                Scan & Confirm
               </div>
               <button
                 type="button"
@@ -359,7 +512,7 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
             </div>
 
             <div className="p-5 space-y-5">
-              {/* Summary card (inside right panel) */}
+              {/* Summary card */}
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -367,7 +520,7 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
                       Pick From
                     </div>
                     <div className="text-lg font-semibold text-blue-600">
-                      {current.bin}
+                      {currentStep.bin}
                     </div>
                   </div>
 
@@ -376,17 +529,17 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
                       Required Qty
                     </div>
                     <div className="text-lg font-semibold text-gray-900">
-                      {current.req} EA
+                      {currentStep.req} EA
                     </div>
                   </div>
 
                   <div className="col-span-1">
                     <div className="text-xs font-medium text-gray-500">SKU</div>
                     <div className="text-sm font-semibold text-gray-900">
-                      {current.sku}
+                      {currentStep.sku}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {current.skuSub} (Black Edition)
+                      {currentStep.skuSub}
                     </div>
                   </div>
 
@@ -395,13 +548,13 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
                       Batch Required
                     </div>
                     <span className="inline-flex rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700">
-                      Yes
+                      {task.orderLine?.batch_preference ? "Yes" : "No"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Steps */}
+              {/* Scan inputs */}
               <div className="space-y-4">
                 <div>
                   <div className="text-sm font-semibold text-gray-900">
@@ -410,9 +563,19 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
                   <input
                     value={binScan}
                     onChange={(e) => setBinScan(e.target.value)}
-                    className="mt-2 w-full rounded-md border border-gray-200 bg-green-100 px-3 py-2 text-sm text-gray-900 outline-none"
-                    placeholder="A-02-04"
+                    disabled={isCompleted}
+                    className={`mt-2 w-full rounded-md border px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 ${
+                      binScan === task.sourceLocation?.location_code && binScan
+                        ? "bg-green-50 border-green-300"
+                        : "bg-white border-gray-200"
+                    }`}
+                    placeholder="Scan bin location..."
                   />
+                  {binScan && binScan !== task.sourceLocation?.location_code && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Expected: {task.sourceLocation?.location_code}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -422,9 +585,19 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
                   <input
                     value={skuScan}
                     onChange={(e) => setSkuScan(e.target.value)}
-                    className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+                    disabled={isCompleted}
+                    className={`mt-2 w-full rounded-md border px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 ${
+                      skuScan === task.orderLine?.sku?.sku_code && skuScan
+                        ? "bg-green-50 border-green-300"
+                        : "bg-white border-gray-200"
+                    }`}
                     placeholder="Scan SKU..."
                   />
+                  {skuScan && skuScan !== task.orderLine?.sku?.sku_code && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Expected: {task.orderLine?.sku?.sku_code}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -435,41 +608,64 @@ const PickTaskDetail = ({ taskId = "PT-2024-8901", onClose, onBack }) => {
                     value={qty}
                     onChange={(e) => setQty(e.target.value)}
                     type="number"
+                    disabled={isCompleted}
                     className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400"
-                    placeholder={`${current.req}`}
+                    placeholder={`${currentStep.req}`}
                     min={0}
-                    max={current.req}
+                    max={currentStep.req}
+                    step="0.001"
                   />
                 </div>
               </div>
-
-              {/* (If you want buttons inside right panel later, tell me; your screenshot cut them off.) */}
             </div>
           </div>
         </div>
-        <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
-          <button
-            onClick={handleConfirmPick}
-            className="flex-1 bg-blue-600 text-white py-3 rounded-md font-medium hover:bg-blue-700 transition-colors"
-          >
-            Confirm Pick
-          </button>
-          <button
-            onClick={handleRaiseException}
-            className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-md font-medium hover:bg-gray-50 transition-colors"
-          >
-            Raise Exception
-          </button>
-          <button className="px-6 border border-gray-300 text-gray-700 py-3 rounded-md font-medium hover:bg-gray-50 transition-colors">
-            Partial Pick
-          </button>
-        </div>
-        {/* Optional back link (if you use it) */}
+
+        {/* Action Buttons */}
+        {!isCompleted && (
+          <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
+            <button
+              onClick={handleCompleteTask}
+              disabled={submitting}
+              className="flex-1 bg-green-600 text-white py-3 rounded-md font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={20} />
+                  Complete Task
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={handleRaiseException}
+              disabled={submitting}
+              className="flex-1 border border-red-300 text-red-700 py-3 rounded-md font-medium hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Raise Exception
+            </button>
+            
+            <button
+              onClick={handlePartialPick}
+              disabled={submitting || !qty || parseFloat(qty) <= 0}
+              className="px-6 border border-gray-300 text-gray-700 py-3 rounded-md font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Partial Pick
+            </button>
+          </div>
+        )}
+
+        {/* Back button */}
         {onBack && (
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 text-sm font-medium text-blue-600"
+            className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 mt-4"
           >
             ← Back to Tasks
           </button>
