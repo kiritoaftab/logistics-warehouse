@@ -1,4 +1,3 @@
-// pages/picking/PickWaveDetails.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import http from "../../api/http";
@@ -18,8 +17,10 @@ import {
   FileText,
   Box,
   List,
-  History
+  History,
+  Loader
 } from "lucide-react";
+import { useToast } from "../components/toast/ToastProvider";
 
 // Move formatDateTime outside so it's available to all components
 const formatDateTime = (dateString) => {
@@ -45,10 +46,13 @@ const formatTime = (dateString) => {
 const PickWaveDetails = () => {
   const { waveId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const [wave, setWave] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("summary");
+  const [releasing, setReleasing] = useState(false);
+  const [showReleaseModal, setShowReleaseModal] = useState(false);
 
   useEffect(() => {
     fetchWaveDetails();
@@ -59,18 +63,52 @@ const PickWaveDetails = () => {
       setLoading(true);
       setError(null);
       const response = await http.get(`/pick-waves/${waveId}`);
+      console.log("Wave details fetched:", response.data);
       setWave(response.data);
     } catch (err) {
       console.error("Error fetching wave details:", err);
       setError(err.response?.data?.message || "Failed to load pick wave details");
+      toast.error("Failed to load pick wave details");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReleaseWave = async () => {
+    try {
+      setReleasing(true);
+      setError(null);
+      
+      const response = await http.post(`/pick-waves/${waveId}/release`);
+      
+      console.log("Wave released successfully:", response.data);
+      
+      // Refresh wave details to get updated status and tasks
+      await fetchWaveDetails();
+      
+      // Close modal
+      setShowReleaseModal(false);
+      
+      // Show success toast
+      toast.success(
+        `Wave released successfully! ${response.data.tasks_generated} tasks generated.`,
+        { duration: 5000 }
+      );
+      
+    } catch (err) {
+      console.error("Error releasing wave:", err);
+      const errorMessage = err.response?.data?.message || "Failed to release wave";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setReleasing(false);
     }
   };
 
   const getStatusColor = (status) => {
     const colors = {
       DRAFT: "bg-gray-100 text-gray-700",
+      PENDING: "bg-yellow-100 text-yellow-700",
       RELEASED: "bg-yellow-100 text-yellow-700",
       "IN PROGRESS": "bg-blue-100 text-blue-700",
       PICKING_IN_PROGRESS: "bg-blue-100 text-blue-700",
@@ -83,6 +121,20 @@ const PickWaveDetails = () => {
 
   const handleRefresh = () => {
     fetchWaveDetails();
+    toast.info("Refreshing wave details...");
+  };
+
+  // Check if wave can be released
+  const canRelease = () => {
+    if (!wave) return false;
+    
+    // Convert to uppercase for case-insensitive comparison
+    const status = wave.status?.toUpperCase();
+    
+    // Release button should be visible for DRAFT or PENDING status
+    const releasableStatuses = ["DRAFT", "PENDING"];
+    
+    return releasableStatuses.includes(status);
   };
 
   if (loading) {
@@ -97,7 +149,7 @@ const PickWaveDetails = () => {
     );
   }
 
-  if (error) {
+  if (error && !wave) {
     return (
       <div className="min-h-screen p-6">
         <div className="max-w-7xl mx-auto">
@@ -205,8 +257,50 @@ const PickWaveDetails = () => {
     ? Math.round((wave.completed_tasks / wave.total_tasks) * 100)
     : 0;
 
+  // Debug log to check status
+  console.log("Current wave status:", wave.status);
+  console.log("Can release:", canRelease());
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      {/* Release Wave Confirmation Modal */}
+      {showReleaseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Release Pick Wave
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to release wave <span className="font-semibold">{wave.wave_no}</span>?
+              This will generate pick tasks and make them available for picking.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowReleaseModal(false)}
+                disabled={releasing}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReleaseWave}
+                disabled={releasing}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {releasing ? (
+                  <>
+                    <Loader size={16} className="animate-spin" />
+                    Releasing...
+                  </>
+                ) : (
+                  "Confirm Release"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -229,7 +323,7 @@ const PickWaveDetails = () => {
                     wave.status
                   )}`}
                 >
-                  {wave.status.replace("_", " ")}
+                  {wave.status?.replace("_", " ")}
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-2">
@@ -258,14 +352,46 @@ const PickWaveDetails = () => {
                 <Printer size={16} />
                 Print
               </button>
-              {wave.status === "DRAFT" && (
-                <button className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-                  Release Wave
+              
+              {/* Release Button - Visible for DRAFT or PENDING status */}
+              {canRelease() && (
+                <button
+                  onClick={() => setShowReleaseModal(true)}
+                  disabled={releasing}
+                  className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {releasing ? (
+                    <>
+                      <Loader size={16} className="animate-spin" />
+                      Releasing...
+                    </>
+                  ) : (
+                    "Release Wave"
+                  )}
                 </button>
               )}
             </div>
           </div>
         </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-red-800 mb-1">Error</h4>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+              <button
+                onClick={() => setError(null)}
+                className="text-red-600 hover:text-red-800"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Progress Bar */}
         <div className="mb-6">
@@ -356,7 +482,7 @@ const PickWaveDetails = () => {
             </nav>
           </div>
 
-          {/* Tab Content - Pass formatDateTime as prop */}
+          {/* Tab Content */}
           <div className="p-6">
             {activeTab === "summary" && <SummaryTab wave={wave} formatDateTime={formatDateTime} />}
             {activeTab === "orders" && <OrdersTab orders={wave.orders} formatDateTime={formatDateTime} />}
@@ -367,9 +493,9 @@ const PickWaveDetails = () => {
       </div>
     </div>
   );
-};
+};  
 
-// Summary Tab Component - Accept formatDateTime as prop
+// Summary Tab Component
 const SummaryTab = ({ wave, formatDateTime }) => {
   return (
     <div className="space-y-6">
@@ -469,7 +595,7 @@ const SummaryTab = ({ wave, formatDateTime }) => {
   );
 };
 
-// Orders Tab Component - Accept formatDateTime as prop
+// Orders Tab Component
 const OrdersTab = ({ orders, formatDateTime }) => {
   if (!orders || orders.length === 0) {
     return (
@@ -559,7 +685,7 @@ const OrdersTab = ({ orders, formatDateTime }) => {
   );
 };
 
-// Tasks Tab Component - Accept formatDateTime as prop
+// Tasks Tab Component
 const TasksTab = ({ tasks, formatDateTime }) => {
   if (!tasks || tasks.length === 0) {
     return (
@@ -598,7 +724,7 @@ const TasksTab = ({ tasks, formatDateTime }) => {
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="text-sm text-gray-500 mb-1">Completion Rate</div>
           <div className="text-2xl font-bold text-blue-600">
-            {Math.round((tasks.filter(t => t.status === "COMPLETED").length / tasks.length) * 100)}%
+            {tasks.length > 0 ? Math.round((tasks.filter(t => t.status === "COMPLETED").length / tasks.length) * 100) : 0}%
           </div>
         </div>
       </div>
@@ -680,7 +806,7 @@ const TasksTab = ({ tasks, formatDateTime }) => {
   );
 };
 
-// Timeline Tab Component - Accept formatDateTime as prop
+// Timeline Tab Component
 const TimelineTab = ({ wave, formatDateTime }) => {
   const timelineEvents = [
     {
