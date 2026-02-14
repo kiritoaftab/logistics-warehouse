@@ -135,8 +135,9 @@ const CreatePickWavePage = () => {
       };
 
       const res = await http.post("/pick-waves/", payload);
-      toast.success(`Pick Wave created: ${res.data.wave_no}`);
-      navigater("/picking");
+      console.log(res);
+      toast.success(res.data.message);
+      navigate("/picking");
     } catch (err) {
       console.error(err);
       toast.error(
