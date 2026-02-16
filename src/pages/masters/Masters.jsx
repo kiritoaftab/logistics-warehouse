@@ -16,6 +16,7 @@ import WarehouseTab from "./components/WarehouseTab";
 import SupplierTab from "./components/SupplierTab";
 import DockTab from "./components/DockTab";
 import { getUserRole } from "../utils/authStorage";
+import CarrierTab from "./components/CarrierTab";
 
 const TAB_CONFIG = [
   { key: "Users", module: "USER_MANAGEMENT", Component: UsersTab },
@@ -33,6 +34,8 @@ const TAB_CONFIG = [
   { key: "Warehouses", module: "WAREHOUSE", Component: WarehouseTab },
   { key: "Suppliers", module: "SUPPLIERS", Component: SupplierTab },
   { key: "Docks", module: "DOCKS", Component: DockTab },
+    { key: "Carriers", module: "CARRIERS", Component: CarrierTab },
+
 ];
 
 const Masters = () => {
