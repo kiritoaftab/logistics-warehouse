@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import http from "../../../api/http";
+import { useToast } from "../../components/toast/ToastProvider";
 
 const CurrentCarton = ({
   orderId,
@@ -11,10 +12,13 @@ const CurrentCarton = ({
   selectedItem,
 }) => {
   const [selectedCartonId, setSelectedCartonId] = useState("");
-  const [qty, setQty] = useState(1);
+  const [qty, setQty] = useState("");
   const [loading, setLoading] = useState(false);
 
-  /* -------- SELECTED CARTON OBJECT -------- */
+  const [closing, setClosing] = useState(false);
+
+  const toast = useToast();
+
   const selectedCarton = useMemo(() => {
     return cartons.find((c) => c.id === Number(selectedCartonId)) || null;
   }, [selectedCartonId, cartons]);
@@ -22,84 +26,112 @@ const CurrentCarton = ({
   const remainingQty = useMemo(() => {
     if (!selectedItem) return 0;
 
-    const packedInCartons = cartons.reduce((total, carton) => {
-      const found = carton.items?.find(
-        (i) => i.sales_order_line_id === selectedItem.id,
-      );
-      return total + (found?.qty || 0);
-    }, 0);
+    const picked = Number(selectedItem.picked_qty || 0);
+    const packed = Number(selectedItem.packed_qty || 0);
 
-    return Math.max(selectedItem.picked_qty - packedInCartons, 0);
-  }, [cartons, selectedItem]);
+    return Math.max(picked - packed, 0);
+  }, [selectedItem]);
 
   const isClosed = selectedCarton?.status === "CLOSED";
   const isEmpty = !selectedCarton?.items?.length;
 
-  /* -------- ADD ITEM -------- */
   const handleAddItem = async () => {
     if (!selectedItem || !selectedCarton) return;
     if (isClosed) return;
-    if (qty <= 0 || qty > remainingQty) return;
+
+    const numericQty = Number(qty);
+
+    if (!numericQty || numericQty <= 0) {
+      toast.error("Quantity must be greater than 0.");
+      return;
+    }
+
+    if (numericQty > remainingQty) {
+      toast.error(`Only ${remainingQty} unit(s) remaining to pack.`);
+      return;
+    }
 
     try {
       setLoading(true);
 
-      await http.post(
+      const res = await http.post(
         `/packing/${orderId}/cartons/${selectedCarton.id}/items/`,
         {
           sales_order_line_id: selectedItem.id,
           sku_id: selectedItem.sku?.id,
-          qty: Number(qty),
+          qty: numericQty,
           batch_no: "",
           serial_no: "",
         },
       );
 
+      if (res?.data?.success) {
+        toast.success(res?.data?.message);
+      }
+
+      await refreshItems();
       await refreshCartons();
-      setQty(1);
+      setQty("");
     } catch (error) {
-      console.error("Add item failed", error);
+      console.log(error?.response);
+      toast.error(error?.response?.data?.message);
     } finally {
       setLoading(false);
     }
   };
 
-  /* -------- DELETE ITEM -------- */
   const handleDelete = async (itemId) => {
     if (!selectedCarton || isClosed) return;
 
     try {
-      await http.delete(
+      const res = await http.delete(
         `/packing/${orderId}/cartons/${selectedCarton.id}/items/${itemId}`,
       );
 
-      refreshCartons();
+      if (res?.data?.success) {
+        toast.success(res?.data?.message);
+      }
+
+      await refreshCartons();
+      await refreshItems();
     } catch (error) {
-      console.error("Delete failed", error);
+      console.log(error?.response);
+      toast.error(error?.response?.data?.message);
     }
   };
 
-  /* -------- CLOSE CARTON -------- */
   const handleClose = async () => {
     if (!selectedCarton) return;
     if (isClosed) return;
     if (isEmpty) return;
 
     try {
-      await http.put(`/packing/${orderId}/cartons/${selectedCarton.id}/close`, {
-        gross_weight: 2.5,
-        net_weight: 2.0,
-      });
+      setClosing(true);
 
-      refreshCartons();
+      const res = await http.put(
+        `/packing/${orderId}/cartons/${selectedCarton.id}/close`,
+        {
+          gross_weight: 2.5,
+          net_weight: 2.0,
+        },
+      );
+
+      if (res?.data?.success) {
+        toast.success(res?.data?.message);
+      }
+
+      await refreshCartons();
+      await refreshItems();
     } catch (error) {
-      console.error("Close failed", error);
+      console.log(error?.response);
+      toast.error(error?.response?.data?.message);
+    } finally {
+      setClosing(false);
     }
   };
 
   return (
     <div className="rounded-lg border bg-white p-5 space-y-4">
-      {/* -------- Carton Selector -------- */}
       <div>
         <div className="font-semibold mb-2">Select Carton</div>
         <select
@@ -116,7 +148,6 @@ const CurrentCarton = ({
         </select>
       </div>
 
-      {/* -------- Carton Info -------- */}
       {selectedCarton && (
         <>
           <div className="text-sm text-gray-600">
@@ -130,7 +161,6 @@ const CurrentCarton = ({
             </span>
           </div>
 
-          {/* -------- Items In Carton -------- */}
           <div className="space-y-2">
             {isEmpty && (
               <div className="text-sm text-gray-500">No items added yet.</div>
@@ -157,7 +187,6 @@ const CurrentCarton = ({
             ))}
           </div>
 
-          {/* -------- Add Item Section -------- */}
           <div className="border-t pt-4 space-y-3">
             {selectedItem && !isClosed ? (
               <>
@@ -174,10 +203,10 @@ const CurrentCarton = ({
 
                 <input
                   type="number"
-                  min="1"
                   max={remainingQty}
                   value={qty}
-                  onChange={(e) => setQty(Number(e.target.value))}
+                  placeholder="Quatity"
+                  onChange={(e) => setQty(e.target.value)}
                   className="border px-3 py-2 rounded w-full"
                 />
 
@@ -202,13 +231,19 @@ const CurrentCarton = ({
               </div>
             )}
 
-            {/* -------- Close Carton -------- */}
             <button
               onClick={handleClose}
-              disabled={!selectedCarton || isClosed || isEmpty}
-              className="w-full border py-2 rounded-md disabled:opacity-50"
+              disabled={closing || isClosed || isEmpty}
+              className="px-4 py-2 bg-red-500 text-white rounded disabled:opacity-50 w-full"
             >
-              Close Carton
+              {closing ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                  Closing...
+                </span>
+              ) : (
+                "Close Carton"
+              )}
             </button>
           </div>
         </>

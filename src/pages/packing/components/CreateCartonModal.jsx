@@ -1,19 +1,20 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import http from "../../../api/http";
+import { useToast } from "../../components/toast/ToastProvider";
 
 const cartonTypes = ["SMALL", "MEDIUM", "LARGE", "EXTRA_LARGE", "CUSTOM"];
-
+const initialcarton = {
+  carton_type: "MEDIUM",
+  length: "",
+  width: "",
+  height: "",
+  tare_weight: "",
+  notes: "",
+};
 const CreateCartonModal = ({ open, onClose, orderId, onSuccess }) => {
-  const [form, setForm] = useState({
-    carton_type: "MEDIUM",
-    length: 100,
-    width: 100,
-    height: 100,
-    tare_weight: 100,
-    notes: "",
-  });
-
+  const [form, setForm] = useState(initialcarton);
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
 
   if (!open) return null;
@@ -26,7 +27,7 @@ const CreateCartonModal = ({ open, onClose, orderId, onSuccess }) => {
     try {
       setLoading(true);
 
-      await http.post(`/packing/${orderId}/cartons`, {
+      const res = await http.post(`/packing/${orderId}/cartons`, {
         ...form,
         length: Number(form.length),
         width: Number(form.width),
@@ -34,8 +35,12 @@ const CreateCartonModal = ({ open, onClose, orderId, onSuccess }) => {
         tare_weight: Number(form.tare_weight),
       });
 
-      onSuccess(); // refresh cartons
-      onClose(); // close modal
+      if (res?.data?.success) {
+        toast.success(res?.data?.message);
+      }
+
+      onSuccess();
+      onClose();
     } catch (err) {
       console.error("Create carton failed", err);
     } finally {
@@ -48,7 +53,12 @@ const CreateCartonModal = ({ open, onClose, orderId, onSuccess }) => {
       <div className="bg-white rounded-lg w-full max-w-md p-6 space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold">Create Carton</h2>
-          <button onClick={onClose}>
+          <button
+            onClick={() => {
+              setForm(initialcarton);
+              onClose();
+            }}
+          >
             <X size={18} />
           </button>
         </div>

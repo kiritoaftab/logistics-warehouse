@@ -8,10 +8,12 @@ import ItemsToPack from "./components/ItemsToPack";
 import CurrentCarton from "./components/CurrentCarton";
 import CreateCartonModal from "./components/CreateCartonModal";
 import PageHeader from "../components/PageHeader";
+import { useToast } from "../components/toast/ToastProvider";
 
 const PackOrderDetail = () => {
   const { id: orderId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [order, setOrder] = useState(null);
   const [cartons, setCartons] = useState([]);
@@ -21,12 +23,16 @@ const PackOrderDetail = () => {
   const [openModal, setOpenModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
+  const [finalizing, setFinalizing] = useState(false);
+
   const fetchOrder = async () => {
     try {
       const numericId = orderId.toString().replace(/\D/g, "");
       const res = await http.get(`/sales-orders/${numericId}`);
+
       setOrder(res.data);
     } catch (err) {
+      toast.error(err?.response?.data?.message);
       setError("Failed to load order.");
     }
   };
@@ -36,7 +42,7 @@ const PackOrderDetail = () => {
       const res = await http.get(`/packing/${orderId}/cartons`);
       setCartons(res.data?.data?.cartons || []);
     } catch (err) {
-      console.error("Carton fetch failed");
+      toast.error(err?.response?.data?.message);
     }
   };
 
@@ -44,9 +50,19 @@ const PackOrderDetail = () => {
     try {
       const numericId = orderId.toString().replace(/\D/g, "");
       const res = await http.get(`/sales-orders/${numericId}`);
-      setOrder(res.data);
+
+      const updatedOrder = res.data;
+      setOrder(updatedOrder);
+
+      if (selectedItem) {
+        const updatedLine = updatedOrder.lines?.find(
+          (line) => line.id === selectedItem.id,
+        );
+
+        setSelectedItem(updatedLine || null);
+      }
     } catch (err) {
-      console.error("Items refresh failed");
+      toast.error(err?.response?.data?.message);
     }
   };
 
@@ -59,12 +75,22 @@ const PackOrderDetail = () => {
     };
     init();
   }, [orderId]);
+
   const handleFinalize = async () => {
     try {
-      await http.post(`/packing/${orderId}/finalize`);
+      setFinalizing(true);
+
+      const res = await http.post(`/packing/${orderId}/finalize`);
+
+      if (res?.data?.success) {
+        toast.success(res?.data?.message);
+      }
+
       navigate("/packing");
     } catch (err) {
-      console.error("Finalize failed");
+      toast.error(err?.response?.data?.message);
+    } finally {
+      setFinalizing(false);
     }
   };
 
@@ -101,7 +127,6 @@ const PackOrderDetail = () => {
   const allCartonsClosed =
     cartons.length > 0 && cartons.every((carton) => carton.status === "CLOSED");
 
-  console.log(allCartonsClosed);
   return (
     <div className="min-h-screen bg-[#F3F7FE] p-6 space-y-4">
       <PageHeader
@@ -123,11 +148,14 @@ const PackOrderDetail = () => {
             {allCartonsClosed && (
               <button
                 onClick={handleFinalize}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
+                disabled={finalizing}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
               >
-                Finalize Packing
+                {finalizing && <Loader className="h-4 w-4 animate-spin" />}
+                {finalizing ? "Finalizing..." : "Finalize Packing"}
               </button>
             )}
+
             <button
               onClick={() => navigate(-1)}
               className="border border-gray-200 bg-white p-2 rounded-md hover:bg-gray-50"
@@ -138,7 +166,6 @@ const PackOrderDetail = () => {
         }
       />
 
-      {/* CONTENT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-8">
           <ItemsToPack
@@ -155,7 +182,7 @@ const PackOrderDetail = () => {
             refreshCartons={fetchCartons}
             refreshItems={fetchItems}
             selectedItem={selectedItem}
-            clearSelection={() => setSelectedItem(null)}
+            setSelectedItem={() => setSelectedItem(null)}
           />
         </div>
       </div>
