@@ -1,12 +1,93 @@
-import React from "react";
+// InboundQueueTable.jsx
+import React, { useState, useEffect } from "react";
+import http from "../../api/http";
 
-const StatusPill = ({ label, color }) => (
-  <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${color}`}>
-    {label}
-  </span>
-);
+const StatusPill = ({ label, color }) => {
+  // Determine color based on status if not provided
+  const getStatusColor = (status) => {
+    const statusMap = {
+      'CONFIRMED': 'bg-yellow-100 text-yellow-700',
+      'IN_RECEIVING': 'bg-blue-100 text-blue-700',
+      'GRN_POSTED': 'bg-green-100 text-green-700',
+      'PUTAWAY_PENDING': 'bg-purple-100 text-purple-700',
+      'PUTAWAY_COMPLETED': 'bg-green-100 text-green-700',
+      'CLOSED': 'bg-gray-100 text-gray-600'
+    };
+    return statusMap[status] || 'bg-gray-100 text-gray-600';
+  };
 
-const InboundQueueTable = () => {
+  const pillColor = color || getStatusColor(label);
+  
+  return (
+    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${pillColor}`}>
+      {label.replace(/_/g, ' ')}
+    </span>
+  );
+};
+
+const InboundQueueTable = ({ warehouseId = '1' }) => {
+  const [asns, setAsns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchInboundQueue();
+  }, [warehouseId]);
+
+  const fetchInboundQueue = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch latest 3 ASNs for the queue
+      const response = await http.get(`/asns?page=1&limit=3&warehouse_id=${warehouseId}`);
+      
+      if (response.data.success) {
+        setAsns(response.data.data.asns);
+      }
+    } catch (err) {
+      console.error("Error fetching inbound queue:", err);
+      setError("Failed to load inbound queue");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format ETA time
+  const formatETA = (eta) => {
+    if (!eta) return 'N/A';
+    const date = new Date(eta);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-4 text-gray-500">
+        Loading inbound queue...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-4 text-red-500">
+        {error}
+      </div>
+    );
+  }
+
+  if (asns.length === 0) {
+    return (
+      <div className="text-center py-4 text-gray-500">
+        No inbound ASNs found
+      </div>
+    );
+  }
+
   return (
     <table className="w-full text-sm">
       <thead className="text-gray-500">
@@ -19,38 +100,27 @@ const InboundQueueTable = () => {
       </thead>
 
       <tbody>
-        <tr className="border-b last:border-0">
-          <td className="py-3 text-blue-600 font-medium">ASN-8821</td>
-          <td>10:30 AM</td>
-          <td>
-            <StatusPill label="Arrived" color="bg-blue-100 text-blue-700" />
-          </td>
-          <td className="text-right text-blue-600 font-medium cursor-pointer">
-            Open
-          </td>
-        </tr>
-
-        <tr className="border-b last:border-0">
-          <td className="py-3 text-blue-600 font-medium">ASN-8822</td>
-          <td>11:00 AM</td>
-          <td>
-            <StatusPill label="Pending" color="bg-gray-100 text-gray-600" />
-          </td>
-          <td className="text-right text-blue-600 font-medium cursor-pointer">
-            Open
-          </td>
-        </tr>
-
-        <tr>
-          <td className="py-3 text-blue-600 font-medium">ASN-8825</td>
-          <td>01:15 PM</td>
-          <td>
-            <StatusPill label="Pending" color="bg-gray-100 text-gray-600" />
-          </td>
-          <td className="text-right text-blue-600 font-medium cursor-pointer">
-            Open
-          </td>
-        </tr>
+        {asns.map((asn) => (
+          <tr key={asn.id} className="border-b last:border-0">
+            <td className="py-3 text-blue-600 font-medium">{asn.asn_no}</td>
+            <td>{formatETA(asn.eta)}</td>
+            <td>
+              <StatusPill label={asn.status} />
+            </td>
+            <td className="text-right">
+              <button 
+                className="text-blue-600 font-medium hover:text-blue-800 cursor-pointer"
+                onClick={() => {
+                  // Handle open action - you can navigate to ASN details
+                  console.log(`Open ASN ${asn.id}`);
+                  // window.location.href = `/asns/${asn.id}`;
+                }}
+              >
+                Open
+              </button>
+            </td>
+          </tr>
+        ))}
       </tbody>
     </table>
   );
