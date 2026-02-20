@@ -304,7 +304,10 @@ const AsnReceiving = () => {
 
     setLoading(true);
     try {
-      await http.post(`/grns/post-from-asn`, { asn_id: asn.id });
+      await http.post(`/grns/post-from-asn`, {
+        asn_id: asn.id,
+        attachments: attachments.map((f) => f.url),
+      });
 
       toast.success("GRN posted successfully.");
       navigate("/inbound");

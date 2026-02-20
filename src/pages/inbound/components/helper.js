@@ -1,12 +1,13 @@
 export const getAsnActionLabel = (row) => {
-  if (row.status === "DRAFT" && row.canUpdate) return "Edit";
+  console.log(row);
+  if (row.status === "DRAFT") return "Edit";
   if (row.status === "IN_RECEIVING") return "Resume";
   if (row.status === "POSTED") return "View GRN";
   return "View";
 };
 
 export const handleAsnNavigation = (row, navigate) => {
-  if (row.status === "DRAFT" && row.canUpdate) {
+  if (row.status === "DRAFT") {
     navigate(`/createASN/${row.id}`, {
       state: { asn: row },
     });

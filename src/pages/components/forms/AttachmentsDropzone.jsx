@@ -30,6 +30,8 @@ const AttachmentsDropzone = ({
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const [previewFile, setPreviewFile] = useState(null);
+
   const pickFiles = () => {
     if (uploading) return;
     inputRef.current?.click();
@@ -137,15 +139,15 @@ const AttachmentsDropzone = ({
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <a
-                      href={f.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block text-sm font-medium text-blue-600 hover:underline truncate"
+                    <button
+                      type="button"
+                      onClick={() => setPreviewFile(f)}
+                      className="block text-sm font-medium text-blue-600 hover:underline truncate text-left"
                       title={f.name}
                     >
                       {f.name}
-                    </a>
+                    </button>
+
                     <div className="text-xs text-gray-500">
                       {bytesToKB(f.size)}{" "}
                       <span className="text-gray-300">•</span>{" "}
@@ -206,6 +208,42 @@ const AttachmentsDropzone = ({
 
           <div className="text-gray-400 text-xs mt-2">
             Packing lists, invoices, or e-way bills (PDF, PNG, JPG)
+          </div>
+        </div>
+      )}
+      {previewFile && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6">
+          <div className="bg-white w-full max-w-4xl h-[85vh] rounded-lg shadow-lg relative flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b px-4 py-2">
+              <div className="text-sm font-medium truncate">
+                {previewFile.name}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewFile(null)}
+                className="text-gray-500 hover:text-red-600"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-hidden">
+              {previewFile.type === "application/pdf" ? (
+                <iframe
+                  src={previewFile.url}
+                  title="PDF Preview"
+                  className="w-full h-full"
+                />
+              ) : (
+                <img
+                  src={previewFile.url}
+                  alt="Preview"
+                  className="max-h-full mx-auto object-contain"
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
