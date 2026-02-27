@@ -36,7 +36,7 @@ const BillableEvents = () => {
   });
 
   const [filters, setFilters] = useState({
-    period: "This Month",
+    period: "This Quarter",
     warehouse_id: "",
     client_id: "",
     status: "All",
@@ -203,7 +203,18 @@ const BillableEvents = () => {
   );
 
   const columns = [
-    { key: "eventId", title: "Event ID" },
+    {
+      key: "eventId",
+      title: "Event ID",
+      render: (row) => (
+        <button
+          onClick={() => navigate(`/billing/billableEventDetail/${row.id}`)}
+          className="font-semibold text-blue-600 hover:text-blue-700"
+        >
+          {row.eventId}
+        </button>
+      ),
+    },
     {
       key: "type",
       title: "Type",
@@ -212,14 +223,14 @@ const BillableEvents = () => {
     {
       key: "reference",
       title: "Reference",
-      render: (row) => (
-        <button
-          onClick={() => navigate(`/billing/billableEventDetail/${row.id}`)}
-          className="font-semibold text-blue-600 hover:text-blue-700"
-        >
-          {row.reference}
-        </button>
-      ),
+      // render: (row) => (
+      //   <button
+      //     onClick={() => navigate(`/billing/billableEventDetail/${row.id}`)}
+      //     className="font-semibold text-blue-600 hover:text-blue-700"
+      //   >
+      //     {row.reference}
+      //   </button>
+      // ),
     },
     { key: "customer", title: "Customer" },
     { key: "basis", title: "Basis" },
@@ -240,36 +251,25 @@ const BillableEvents = () => {
 
         return (
           <div className="flex items-center justify-end gap-2">
-            {row.status === "Blocked" ? (
-              <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">
-                Fix Rate
+            {/* Edit */}
+            {row.status !== "Invoiced" && (
+              <button
+                onClick={() => openEdit(row)}
+                disabled={!canEdit}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                title={!canEdit ? "Cannot edit INVOICED/VOID" : "Edit"}
+              >
+                <Pencil size={16} />
               </button>
-            ) : (
-              <>
-                {/* View */}
-                <button
-                  onClick={() =>
-                    navigate(`/billing/billableEventDetail/${row.id}`)
-                  }
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  title="View"
-                >
-                  <Eye size={16} />
-                </button>
-
-                {/* Edit */}
-                {row.status === "Blocked" && (
-                  <button
-                    onClick={() => openEdit(row)}
-                    disabled={!canEdit}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                    title={!canEdit ? "Cannot edit INVOICED/VOID" : "Edit"}
-                  >
-                    <Pencil size={16} />
-                  </button>
-                )}
-              </>
             )}
+            {/* View */}
+            <button
+              onClick={() => navigate(`/billing/billableEventDetail/${row.id}`)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+              title="View"
+            >
+              <Eye size={16} />
+            </button>
           </div>
         );
       },
@@ -394,7 +394,7 @@ const BillableEvents = () => {
 
   return (
     <div className="min-h-screen ">
-      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="mx-auto space-y-5">
         <FilterBar
           filters={filterConfig}
           onFilterChange={handleFilterChange}

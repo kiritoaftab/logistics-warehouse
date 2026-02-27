@@ -21,7 +21,7 @@ export const getOrderActionLabel = (status, canUpdate = true) => {
 
 export const handleAsnNavigation = (row, navigate) => {
   if (row.status === "DRAFT") {
-    navigate(`/createASN/${row.id}`, {
+    navigate(`/inbound/createASN/${row.id}`, {
       state: { asn: row },
     });
   } else if (row.status === "IN_RECEIVING") {

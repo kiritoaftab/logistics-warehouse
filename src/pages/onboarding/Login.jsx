@@ -18,6 +18,50 @@ const Login = () => {
     password: "",
   });
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+
+  //   if (!credentials.email || !credentials.password) {
+  //     toast.error("Email and password are required");
+  //     return;
+  //   }
+
+  //   try {
+  //     setIsLoading(true);
+
+  //     const res = await axios.post(`${BASE_URL}/auth/login`, credentials, {
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //     });
+
+  //     const { success, message, data } = res.data;
+
+  //     if (success) {
+  //       sessionStorage.setItem("auth_token", data.token);
+  //       sessionStorage.setItem("user", JSON.stringify(data.user));
+  //       setUserSession(data.user);
+  //       const result = await refreshPermissions({ force: true });
+
+  //       if (!result.ok) {
+  //         toast.error(result.reason || "Could not load permissions");
+  //         return;
+  //       }
+  //       toast.success(message || "Login successful");
+  //       navigate("/dashboard");
+  //     } else {
+  //       toast.error(message || "Login failed");
+  //     }
+  //   } catch (error) {
+
+  //     const errMsg = error?.response?.data?.message || "Login failed";
+
+  //     toast.error(errMsg);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -30,9 +74,8 @@ const Login = () => {
       setIsLoading(true);
 
       const res = await axios.post(`${BASE_URL}/auth/login`, credentials, {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        timeout: 15000, // optional
       });
 
       const { success, message, data } = res.data;
@@ -41,26 +84,48 @@ const Login = () => {
         sessionStorage.setItem("auth_token", data.token);
         sessionStorage.setItem("user", JSON.stringify(data.user));
         setUserSession(data.user);
-        const result = await refreshPermissions({ force: true });
 
+        const result = await refreshPermissions({ force: true });
         if (!result.ok) {
           toast.error(result.reason || "Could not load permissions");
           return;
         }
+
         toast.success(message || "Login successful");
         navigate("/dashboard");
       } else {
         toast.error(message || "Login failed");
       }
     } catch (error) {
-      const errMsg = error?.response?.data?.message || "Login failed";
+      const status = error?.response?.status;
 
+      // ✅ Rate limit
+      if (status === 429) {
+        // many APIs send Retry-After header (seconds)
+        const retryAfterSecRaw = error?.response?.headers?.["retry-after"];
+        const retryAfterSec = Number(retryAfterSecRaw);
+
+        if (Number.isFinite(retryAfterSec) && retryAfterSec > 0) {
+          toast.error(`Too many requests. Try again in ${retryAfterSec}s.`);
+        } else {
+          toast.error("Too many requests. Please wait a moment and try again.");
+        }
+        return;
+      }
+
+      // ✅ Network / timeout
+      if (!error?.response) {
+        toast.error("Network error. Please check your internet and try again.");
+        return;
+      }
+
+      // ✅ Other API errors
+      const errMsg = error?.response?.data?.message || "Login failed";
       toast.error(errMsg);
     } finally {
       setIsLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">

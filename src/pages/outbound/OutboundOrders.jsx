@@ -225,6 +225,12 @@ const OutboundOrders = () => {
   const actionBystatus = (row) => {
     if (row?.status === "DRAFT") {
       navigate(`/outbound/saleOrderCreate/${row?.id}`);
+    } else if (row?.status === "ALLOCATED") {
+      navigate(`/picking/waves/${row?.id}`);
+    } else if (row?.status === "PACKED") {
+      navigate(`/shipping`);
+    } else {
+      navigate(`/orderDetails/${row?.id}`);
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import FilterBar from "../components/FilterBar";
 import CusTable from "../components/CusTable";
 import Pagination from "../components/Pagination";
@@ -7,12 +7,15 @@ import ConfirmDeleteModal from "../components/modals/ConfirmDeleteModal";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "../components/toast/ToastProvider";
 import http from "../../api/http";
+import PaginatedEntityDropdown from "../inbound/components/asnform/common/PaginatedEntityDropdown";
 
 const RateCards = () => {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState("rate");
   const [filters, setFilters] = useState({
-    chargeType: "",
+    client_id: "",
+    chargeType: "All",
+    is_active: "All",
     search: "",
   });
   const [rateCards, setRateCards] = useState([]);
@@ -29,7 +32,6 @@ const RateCards = () => {
     limit: 20,
   });
 
-  // Fetch rate cards from API
   const fetchRateCards = useCallback(
     async (showLoading = true) => {
       if (showLoading) setLoading(true);
@@ -39,18 +41,21 @@ const RateCards = () => {
           limit: pagination.limit,
         };
 
-        // Add filters if they exist
+        if (filters.client_id) params.client_id = filters.client_id;
+
         if (filters.chargeType && filters.chargeType !== "All") {
           params.charge_type = filters.chargeType;
         }
-        if (filters.search) {
-          params.search = filters.search;
+
+        if (filters.is_active && filters.is_active !== "All") {
+          params.is_active = filters.is_active;
         }
+
+        if (filters.search) params.search = filters.search;
 
         const response = await http.get("/rate-cards/", { params });
 
         if (response.data.success) {
-          // Show all rate cards (both active and inactive)
           setRateCards(response.data.data.rate_cards);
           setPagination({
             ...pagination,
@@ -60,13 +65,19 @@ const RateCards = () => {
         }
       } catch (error) {
         console.error("Error fetching rate cards:", error);
-        toast.error("Failed to fetch rate cards");
+        toast.error(
+          error?.response?.data?.message ||
+            error?.response?.data?.error ||
+            "Failed to fetch rate cards",
+        );
       } finally {
         if (showLoading) setLoading(false);
       }
     },
     [
+      filters.client_id,
       filters.chargeType,
+      filters.is_active,
       filters.search,
       pagination.page,
       pagination.limit,
@@ -74,13 +85,11 @@ const RateCards = () => {
     ],
   );
 
-  // Open delete confirmation
   const openDeleteModal = (rateCard) => {
     setRateCardToDelete(rateCard);
     setDeleteModalOpen(true);
   };
 
-  // Delete rate card
   const handleDelete = async () => {
     if (!rateCardToDelete) return;
 
@@ -130,30 +139,25 @@ const RateCards = () => {
     }
   };
 
-  // Handle modal success
   const handleModalSuccess = (message) => {
     toast.success(message);
     fetchRateCards(false);
   };
 
-  // Handle edit
   const handleEdit = (rateCard) => {
     setSelectedRateCard(rateCard);
     setModalOpen(true);
   };
 
-  // Handle new rate card
   const handleNewRateCard = () => {
     setSelectedRateCard(null);
     setModalOpen(true);
   };
 
-  // Fetch on component mount and when filters/pagination changes
   useEffect(() => {
     fetchRateCards();
   }, [fetchRateCards]);
 
-  // Debounce search to avoid too many API calls
   useEffect(() => {
     const timer = setTimeout(() => {
       if (filters.search !== undefined) {
@@ -164,7 +168,6 @@ const RateCards = () => {
     return () => clearTimeout(timer);
   }, [filters.search]);
 
-  // Header Tabs (UI only)
   const tabs = [
     { id: "billable", label: "Billable Events" },
     { id: "ready", label: "Ready to Invoice" },
@@ -173,7 +176,6 @@ const RateCards = () => {
     { id: "rate", label: "Rate Cards" },
   ];
 
-  // Extract unique charge types from data for filter options
   const chargeTypeOptions = [
     "All",
     ...new Set(rateCards.map((card) => card.charge_type)),
@@ -350,7 +352,6 @@ const RateCards = () => {
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-    // Reset to first page when filter changes
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
@@ -369,8 +370,7 @@ const RateCards = () => {
 
   return (
     <div className="min-h-screen">
-      <div className="mx-auto max-w-7xl px-6 py-6 space-y-5">
-        {/* Filter row + New Rate Card */}
+      <div className="mx-auto py-6 space-y-5">
         <div className="rounded-xl border border-gray-200 bg-white p-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex-1">
@@ -379,7 +379,26 @@ const RateCards = () => {
                 onFilterChange={handleFilterChange}
                 onReset={handleReset}
                 onApply={handleApply}
-              />
+              >
+                <div className="w-full sm:w-[260px]">
+                  <p className="text-xs text-gray-500 mb-1">Client</p>
+
+                  <PaginatedEntityDropdown
+                    endpoint="/clients"
+                    listKey="clients"
+                    value={filters.client_id}
+                    onChange={(id) => handleFilterChange("client_id", id)}
+                    placeholder="All Clients"
+                    limit={10}
+                    enableSearch
+                    searchParam="search"
+                    renderItem={(c) => ({
+                      title: `${c.client_name} (${c.client_code || "-"})`,
+                      subtitle: c.email || c.phone || "",
+                    })}
+                  />
+                </div>
+              </FilterBar>
             </div>
 
             <button
@@ -392,7 +411,6 @@ const RateCards = () => {
           </div>
         </div>
 
-        {/* Table with loading state */}
         <div className="rounded-xl border border-gray-200 bg-white">
           {loading ? (
             <div className="flex justify-center items-center h-64">
@@ -417,7 +435,6 @@ const RateCards = () => {
         </div>
       </div>
 
-      {/* Rate Card Modal */}
       <RateCardModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -425,7 +442,6 @@ const RateCards = () => {
         rateCard={selectedRateCard}
       />
 
-      {/* Delete Confirmation Modal */}
       <ConfirmDeleteModal
         open={deleteModalOpen}
         title="Deactivate Rate Card"

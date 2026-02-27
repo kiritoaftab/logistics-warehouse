@@ -356,9 +356,9 @@ const BillableEventDetail = () => {
               <div className="mt-1 text-xl font-extrabold text-gray-900">
                 {event.qty}
               </div>
-              <div className="mt-1 text-xs text-gray-500">
+              {/* <div className="mt-1 text-xs text-gray-500">
                 {event.billing_basis || "units"}
-              </div>
+              </div> */}
             </div>
           )}
 

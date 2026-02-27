@@ -5,6 +5,7 @@ import { useToast } from "@/pages/components/toast/ToastProvider";
 import { getWarehouses } from "../../inbound/components/api/masters.api";
 import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import PaginatedEntityDropdown from "../../inbound/components/asnform/common/PaginatedEntityDropdown";
 
 const CreatePickWavePage = () => {
   const toast = useToast();
@@ -17,7 +18,7 @@ const CreatePickWavePage = () => {
   const [waveType, setWaveType] = useState("MANUAL");
   const [waveStrategy, setWaveStrategy] = useState("BATCH");
   const [priority, setPriority] = useState("NORMAL");
-  const [carrier, setCarrier] = useState("");
+  // const [carrier, setCarrier] = useState("");
   const [carrierCutoffTime, setCarrierCutoffTime] = useState("");
   const [zoneFilter, setZoneFilter] = useState("");
   const [notes, setNotes] = useState("");
@@ -26,10 +27,19 @@ const CreatePickWavePage = () => {
   const [search, setSearch] = useState("");
   const dropdownRef = useRef(null);
 
-  // Validation errors
+  const [shipping, setShipping] = useState({
+    carrier_id: null,
+    carrier_name: "",
+    serviceLevel: "",
+    packagingPreference: "",
+    codAmount: "",
+    awbTracking: "",
+  });
+
   const [errors, setErrors] = useState({
     warehouse: "",
     orders: "",
+    carrier: "",
     carrierCutoffTime: "",
   });
 
@@ -94,9 +104,13 @@ const CreatePickWavePage = () => {
   const labelClasses = "block text-sm font-medium text-gray-700 mb-1";
   const errorClasses = "text-xs text-red-500 mt-1";
 
-  // Validate required fields
   const validateForm = () => {
-    const newErrors = { warehouse: "", orders: "", carrierCutoffTime: "" };
+    const newErrors = {
+      warehouse: "",
+      orders: "",
+      carrier: "",
+      carrierCutoffTime: "",
+    };
     let valid = true;
 
     if (!selectedWarehouse) {
@@ -109,6 +123,11 @@ const CreatePickWavePage = () => {
       valid = false;
     }
 
+    if (!shipping.carrier_name) {
+      newErrors.carrier = "Carrier is required";
+      valid = false;
+    }
+
     if (!carrierCutoffTime) {
       newErrors.carrierCutoffTime = "Carrier Cutoff Time is required";
       valid = false;
@@ -118,24 +137,61 @@ const CreatePickWavePage = () => {
     return valid;
   };
 
+  // const createPickWave = async () => {
+  //   if (!validateForm()) return; // stop if invalid
+
+  //   try {
+  //     const payload = {
+  //       warehouse_id: Number(selectedWarehouse),
+  //       order_ids: selectedOrders.map((o) => Number(o.id)),
+  //       wave_type: waveType,
+  //       wave_strategy: waveStrategy,
+  //       priority,
+  //       // carrier,
+  //       carrier_id: shipping.carrier_id,
+  //       carrier_name: shipping.carrier_name,
+  //       carrier_cutoff_time: carrierCutoffTime,
+  //       zone_filter: zoneFilter,
+  //       notes,
+  //     };
+
+  //     const res = await http.post("/pick-waves/", payload);
+  //     console.log(res);
+  //     toast.success(res.data.message);
+  //     navigate("/picking");
+  //   } catch (err) {
+  //     console.error(err);
+  //     toast.error(
+  //       err?.response?.data?.message ||
+  //         err?.response?.data?.error ||
+  //         "Failed to create pick wave",
+  //     );
+  //   }
+  // };
+
   const createPickWave = async () => {
-    if (!validateForm()) return; // stop if invalid
+    if (!validateForm()) return;
 
     try {
+      // datetime-local gives: "2026-10-01T12:00"
+      // convert to ISO Z: "2026-10-01T12:00:00.000Z"
+      const cutoffISO = carrierCutoffTime
+        ? new Date(carrierCutoffTime).toISOString()
+        : null;
+
       const payload = {
         warehouse_id: Number(selectedWarehouse),
         order_ids: selectedOrders.map((o) => Number(o.id)),
         wave_type: waveType,
         wave_strategy: waveStrategy,
         priority,
-        carrier,
-        carrier_cutoff_time: carrierCutoffTime,
+        carrier: shipping.carrier_name || "", // ✅ STRING
+        carrier_cutoff_time: cutoffISO, // ✅ ISO string
         zone_filter: zoneFilter,
         notes,
       };
 
       const res = await http.post("/pick-waves/", payload);
-      console.log(res);
       toast.success(res.data.message);
       navigate("/picking");
     } catch (err) {
@@ -147,7 +203,6 @@ const CreatePickWavePage = () => {
       );
     }
   };
-
   return (
     <FormPage
       title="Create Pick Wave"
@@ -178,14 +233,23 @@ const CreatePickWavePage = () => {
             onClick={() => {
               setSelectedOrders([]);
               setSelectedWarehouse("");
-              setCarrier("");
+              setErrors({
+                warehouse: "",
+                orders: "",
+                carrier: "",
+                carrierCutoffTime: "",
+              });
               setCarrierCutoffTime("");
               setZoneFilter("");
               setNotes("");
               setWaveType("MANUAL");
               setWaveStrategy("BATCH");
               setPriority("NORMAL");
-              setErrors({ warehouse: "", orders: "", carrierCutoffTime: "" });
+              setShipping((p) => ({
+                ...p,
+                carrier_id: null,
+                carrier_name: "",
+              }));
             }}
             className="px-6 py-2.5 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
           >
@@ -372,12 +436,26 @@ const CreatePickWavePage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div>
             <label className={labelClasses}>Carrier</label>
-            <input
-              type="text"
-              value={carrier}
-              onChange={(e) => setCarrier(e.target.value)}
-              placeholder="Enter carrier name"
-              className={inputClasses}
+
+            <PaginatedEntityDropdown
+              endpoint="/carriers"
+              listKey="carriers"
+              value={shipping.carrier_id}
+              onChange={(id, carrier) => {
+                setShipping((p) => ({
+                  ...p,
+                  carrier_id: id ? Number(id) : null,
+                  carrier_name: carrier?.carrier_name || "",
+                }));
+                if (errors.carrier) setErrors((p) => ({ ...p, carrier: "" }));
+              }}
+              placeholder="Select Carrier"
+              limit={10}
+              searchParam="search"
+              renderItem={(c) => ({
+                title: `${c.carrier_name} (${c.carrier_code})`,
+                subtitle: `${c.carrier_type || ""}${c.phone ? " • " + c.phone : ""}`,
+              })}
             />
           </div>
           <div>
@@ -396,6 +474,9 @@ const CreatePickWavePage = () => {
             />
             {errors.carrierCutoffTime && (
               <div className={errorClasses}>{errors.carrierCutoffTime}</div>
+            )}
+            {errors.carrier && (
+              <div className={errorClasses}>{errors.carrier}</div>
             )}
           </div>
         </div>
