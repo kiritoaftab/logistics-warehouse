@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Add this import
+import { useNavigate } from "react-router-dom"; 
 import FilterBar from "../components/FilterBar";
 import CusTable from "../components/CusTable";
 import http from "../../api/http";
@@ -182,14 +182,14 @@ const PickWaves = ({ onWaveSelect, onTaskSelect }) => {
         <span className="font-semibold text-blue-600">{r.wave_no}</span>
       ),
     },
-    {
-      key: "client",
-      title: "Client",
-      render: (r) => {
-        const client = r.orders?.[0]?.client_id || "N/A";
-        return <span>{client === 1 ? "Acme Corp" : `Client ${client}`}</span>;
-      },
-    },
+    // {
+    //   key: "client",
+    //   title: "Client",
+    //   render: (r) => {
+    //     const client = r.orders?.[0]?.client_id || "N/A";
+    //     return <span>{client === 1 ? "Acme Corp" : `Client ${client}`}</span>;
+    //   },
+    // },
     {
       key: "orders",
       title: "Orders",
@@ -241,7 +241,7 @@ const PickWaves = ({ onWaveSelect, onTaskSelect }) => {
         <div className="flex gap-2">
           <button 
             className="text-blue-600 text-sm font-medium hover:text-blue-800 px-2 py-1 hover:bg-blue-50 rounded"
-            onClick={() => handleViewDetails(r)} // FIXED: Changed to handleViewDetails
+            onClick={() => handleViewDetails(r)} 
           >
             View Details
           </button>
