@@ -477,7 +477,7 @@ const InboundASN = () => {
             </button>
             {canCreate && (
               <button
-                onClick={() => navigate("/createASN/new")}
+                onClick={() => navigate("/inbound/createASN/new")}
                 className="px-4 py-2 rounded-md text-sm bg-primary text-white w-full sm:w-auto"
               >
                 + Create ASN

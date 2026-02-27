@@ -199,8 +199,10 @@ import http from "../../api/http";
 import ConfirmActionModal from "./components/ConfirmActionModal";
 import PaymentsLedgerModal from "./components/PaymentsLedgerModal";
 import RecordPaymentModal from "./components/RecordPaymentModal";
+import { useToast } from "../components/toast/ToastProvider";
 
 const PaymentsAging = ({ onOpenInvoice }) => {
+  const toast = useToast();
   const [warehouses, setWarehouses] = useState([]);
   const [rows, setRows] = useState([]);
   const [loadingAging, setLoadingAging] = useState(false);
@@ -400,11 +402,13 @@ const PaymentsAging = ({ onOpenInvoice }) => {
 
     setConfirmLoading(true);
     try {
+      let res;
       if (type === "confirm") {
-        await http.post(`/payments/${paymentId}/confirm`);
+        res = await http.post(`/payments/${paymentId}/confirm`);
       } else if (type === "reverse") {
-        await http.post(`/payments/${paymentId}/reverse`);
+        res = await http.post(`/payments/${paymentId}/reverse`);
       }
+      toast.success(res?.data?.message || "Action completed successfully.");
       closeConfirm();
       setLedgerReloadKey((k) => k + 1);
       loadAging();

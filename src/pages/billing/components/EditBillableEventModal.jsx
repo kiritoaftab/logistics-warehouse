@@ -86,7 +86,8 @@ const EditBillableEventModal = ({ isOpen, onClose, event, onUpdated }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
-      <div className="relative z-10 w-full max-w-xl rounded-xl bg-white shadow-xl">
+      <div className="relative z-10 w-full max-w-xl max-h-[90vh] flex flex-col rounded-xl bg-white shadow-xl">
+        {" "}
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div>
             <div className="text-lg font-semibold text-gray-900">
@@ -103,20 +104,17 @@ const EditBillableEventModal = ({ isOpen, onClose, event, onUpdated }) => {
             ✕
           </button>
         </div>
-
-        <div className="p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {!canEdit && (
             <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
               This event cannot be edited when status is INVOICED or VOID.
             </div>
           )}
-
           {err && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {err}
             </div>
           )}
-
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Warehouse ID">
               <input
@@ -181,7 +179,6 @@ const EditBillableEventModal = ({ isOpen, onClose, event, onUpdated }) => {
               </select>
             </Field>
           </div>
-
           <Field label="Description">
             <input
               value={form.description}
@@ -190,7 +187,6 @@ const EditBillableEventModal = ({ isOpen, onClose, event, onUpdated }) => {
               disabled={!canEdit}
             />
           </Field>
-
           <Field label="Notes">
             <textarea
               rows={3}
@@ -200,7 +196,6 @@ const EditBillableEventModal = ({ isOpen, onClose, event, onUpdated }) => {
               disabled={!canEdit}
             />
           </Field>
-
           {String(form.status).toUpperCase() === "BLOCKED" && (
             <Field label="Blocked Reason">
               <input
@@ -212,7 +207,6 @@ const EditBillableEventModal = ({ isOpen, onClose, event, onUpdated }) => {
             </Field>
           )}
         </div>
-
         <div className="flex justify-end gap-2 border-t px-5 py-4">
           <button
             onClick={onClose}

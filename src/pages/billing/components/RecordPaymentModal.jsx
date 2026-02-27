@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import http from "../../../api/http";
+import { useToast } from "../../components/toast/ToastProvider";
 
 const METHODS = [
   "BANK_TRANSFER",
@@ -13,6 +14,7 @@ const METHODS = [
 ];
 
 const RecordPaymentModal = ({ isOpen, onClose, client, onSuccess }) => {
+  const toast = useToast();
   const [form, setForm] = useState({
     invoice_id: "",
     amount: "",
@@ -33,11 +35,9 @@ const RecordPaymentModal = ({ isOpen, onClose, client, onSuccess }) => {
     if (!isOpen) return;
     setError("");
 
-    // default date
     const today = new Date().toISOString().slice(0, 10);
     setForm((p) => ({ ...p, payment_date: p.payment_date || today }));
 
-    // load invoices for client (to choose invoice_id)
     const loadInvoices = async () => {
       if (!client?.id) return;
       setLoadingInvoices(true);
@@ -75,7 +75,7 @@ const RecordPaymentModal = ({ isOpen, onClose, client, onSuccess }) => {
     setSubmitting(true);
     setError("");
     try {
-      await http.post("/payments/", {
+      const res = await http.post("/payments/", {
         invoice_id: Number(form.invoice_id),
         amount: Number(form.amount),
         payment_date: form.payment_date,
@@ -85,6 +85,12 @@ const RecordPaymentModal = ({ isOpen, onClose, client, onSuccess }) => {
         tds_amount: form.tds_amount ? Number(form.tds_amount) : 0,
         notes: form.notes || null,
       });
+
+      console.log("Payment API response", res);
+      if (res?.data?.success) {
+        toast.success("Payment recorded successfully.");
+        onClose();
+      }
 
       onSuccess?.();
     } catch (e2) {

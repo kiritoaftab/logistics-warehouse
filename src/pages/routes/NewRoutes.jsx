@@ -79,7 +79,10 @@ const NewRoutes = [
   },
 
   { path: "/inbound", element: protect("/inbound", <InboundASN />) },
-  { path: "/createASN/:id", element: protect("/createASN/:id", <CreateASN />) },
+  {
+    path: "/inbound/createASN/:id",
+    element: protect("/inbound/createASN/:id", <CreateASN />),
+  },
   {
     path: "/inbound/ASNdetails/:id",
     element: protect("/inbound/ASNdetails/:id", <AsnDetail />),

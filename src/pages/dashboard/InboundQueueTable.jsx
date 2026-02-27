@@ -1,31 +1,35 @@
 // InboundQueueTable.jsx
 import React, { useState, useEffect } from "react";
 import http from "../../api/http";
+import { useNavigate } from "react-router-dom";
 
 const StatusPill = ({ label, color }) => {
-  // Determine color based on status if not provided
   const getStatusColor = (status) => {
     const statusMap = {
-      'CONFIRMED': 'bg-yellow-100 text-yellow-700',
-      'IN_RECEIVING': 'bg-blue-100 text-blue-700',
-      'GRN_POSTED': 'bg-green-100 text-green-700',
-      'PUTAWAY_PENDING': 'bg-purple-100 text-purple-700',
-      'PUTAWAY_COMPLETED': 'bg-green-100 text-green-700',
-      'CLOSED': 'bg-gray-100 text-gray-600'
+      CONFIRMED: "bg-yellow-100 text-yellow-700",
+      IN_RECEIVING: "bg-blue-100 text-blue-700",
+      GRN_POSTED: "bg-green-100 text-green-700",
+      PUTAWAY_PENDING: "bg-purple-100 text-purple-700",
+      PUTAWAY_COMPLETED: "bg-green-100 text-green-700",
+      CLOSED: "bg-gray-100 text-gray-600",
     };
-    return statusMap[status] || 'bg-gray-100 text-gray-600';
+    return statusMap[status] || "bg-gray-100 text-gray-600";
   };
 
   const pillColor = color || getStatusColor(label);
-  
+
   return (
-    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${pillColor}`}>
-      {label.replace(/_/g, ' ')}
+    <span
+      className={`px-2 py-0.5 text-xs rounded-full font-medium ${pillColor}`}
+    >
+      {label.replace(/_/g, " ")}
     </span>
   );
 };
 
-const InboundQueueTable = ({ warehouseId = '1' }) => {
+const InboundQueueTable = ({ warehouseId = "1" }) => {
+  const navigate = useNavigate();
+
   const [asns, setAsns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,11 +41,13 @@ const InboundQueueTable = ({ warehouseId = '1' }) => {
   const fetchInboundQueue = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Fetch latest 3 ASNs for the queue
-      const response = await http.get(`/asns?page=1&limit=3&warehouse_id=${warehouseId}`);
-      
+      const response = await http.get(
+        `/asns?page=1&limit=3&warehouse_id=${warehouseId}`,
+      );
+
       if (response.data.success) {
         setAsns(response.data.data.asns);
       }
@@ -55,12 +61,12 @@ const InboundQueueTable = ({ warehouseId = '1' }) => {
 
   // Format ETA time
   const formatETA = (eta) => {
-    if (!eta) return 'N/A';
+    if (!eta) return "N/A";
     const date = new Date(eta);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
   };
 
@@ -73,11 +79,7 @@ const InboundQueueTable = ({ warehouseId = '1' }) => {
   }
 
   if (error) {
-    return (
-      <div className="text-center py-4 text-red-500">
-        {error}
-      </div>
-    );
+    return <div className="text-center py-4 text-red-500">{error}</div>;
   }
 
   if (asns.length === 0) {
@@ -108,12 +110,10 @@ const InboundQueueTable = ({ warehouseId = '1' }) => {
               <StatusPill label={asn.status} />
             </td>
             <td className="text-right">
-              <button 
+              <button
                 className="text-blue-600 font-medium hover:text-blue-800 cursor-pointer"
                 onClick={() => {
-                  // Handle open action - you can navigate to ASN details
-                  console.log(`Open ASN ${asn.id}`);
-                  // window.location.href = `/asns/${asn.id}`;
+                  navigate(`/inbound/ASNdetails/${asn.id}`);
                 }}
               >
                 Open

@@ -40,7 +40,7 @@ const ReadyToInvoice = () => {
   const [loading, setLoading] = useState(false);
 
   const [filters, setFilters] = useState({
-    period: "This Month",
+    period: "This Quarter",
     warehouse_id: "",
     client_id: "",
     search: "",
@@ -131,7 +131,7 @@ const ReadyToInvoice = () => {
 
   const handleReset = () => {
     setFilters({
-      period: "This Month",
+      period: "This Quarter",
       warehouse_id: "",
       client_id: "",
       search: "",
