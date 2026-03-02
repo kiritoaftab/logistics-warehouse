@@ -1,5 +1,4 @@
 // src/pages/reports/components/ReportCard.jsx
-import React, { use } from "react";
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -33,6 +32,7 @@ export default function ReportCard({
           type="button"
           className="rounded-md p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
           title="Open"
+          onClick={() => navigate(route)}
         >
           <ArrowRight className="h-4 w-4" />
         </button>
