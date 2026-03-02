@@ -1,6 +1,6 @@
-// FilterBar.jsx
+// src/pages/components/FilterBar.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 const normalizeOption = (opt) => {
   if (typeof opt === "string") {
@@ -28,6 +28,8 @@ const SelectBox = ({
   isOpen,
   onToggle,
   onSelect,
+  pagination,
+  onPageChange,
 }) => {
   const wrapRef = useRef(null);
   useOutsideClick(wrapRef, () => isOpen && onToggle(false));
@@ -54,20 +56,49 @@ const SelectBox = ({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 w-full rounded-md border border-gray-200 bg-white shadow-sm z-50">
-          {normalizedOptions.map((opt) => (
-            <button
-              key={String(opt.value)} // ✅ always safe
-              type="button"
-              onClick={() => {
-                onSelect(opt.value); // always pass VALUE
-                onToggle(false);
-              }}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
-            >
-              {opt.label}
-            </button>
-          ))}
+        <div className="absolute top-full mt-2 w-full rounded-md border border-gray-200 bg-white shadow-sm z-50 max-h-[300px] flex flex-col">
+          <div className="overflow-y-auto flex-1">
+            {normalizedOptions.map((opt) => (
+              <button
+                key={String(opt.value)}
+                type="button"
+                onClick={() => {
+                  onSelect(opt.value);
+                  onToggle(false);
+                }}
+                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  value === opt.value ? 'bg-blue-50 text-blue-700' : ''
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          
+          {/* Pagination controls */}
+          {pagination && pagination.pages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-200 px-2 py-2">
+              <button
+                onClick={() => onPageChange?.(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              
+              <span className="text-xs text-gray-600">
+                Page {pagination.page} of {pagination.pages}
+              </span>
+              
+              <button
+                onClick={() => onPageChange?.(pagination.page + 1)}
+                disabled={pagination.page === pagination.pages}
+                className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -132,6 +163,8 @@ const FilterBar = ({
                 isOpen={openKey === k}
                 onToggle={(open) => setOpenKey(open ? k : null)}
                 onSelect={(val) => onFilterChange?.(f.key, val)}
+                pagination={f.pagination}
+                onPageChange={f.onPageChange}
               />
             );
           })}
@@ -143,14 +176,14 @@ const FilterBar = ({
               <button
                 type="button"
                 onClick={onApply}
-                className="w-[120px] rounded-md bg-blue-600 px-4 py-2 text-sm text-white"
+                className="w-[120px] rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 transition-colors"
               >
                 Apply
               </button>
               <button
                 type="button"
                 onClick={onReset}
-                className="w-[120px] rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700"
+                className="w-[120px] rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Reset
               </button>

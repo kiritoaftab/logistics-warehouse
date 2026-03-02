@@ -1,94 +1,216 @@
 // src/pages/reports/PickProductivity.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { Download, Printer } from "lucide-react";
+import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 
 import PageHeader from "../components/PageHeader";
 import FilterBar from "../components/FilterBar";
 import StatCard from "../components/StatCard";
 import CusTable from "../components/CusTable";
 import { AccuracyPill, Badge } from "./components/helper";
+import http from "../../api/http";
+
+// Date range options mapping
+const DATE_RANGES = {
+  "All": { days: null }, // null means no date filter
+  "Today": { days: 0 },
+  "This Week": { days: 7 },
+  "This Month": { days: 30 },
+  "Last Month": { days: 30, offset: 30 }
+};
 
 export default function PickProductivity() {
-  const [dateRange, setDateRange] = useState("This Month (Oct 2023)");
-  const [warehouse, setWarehouse] = useState("All Warehouses");
+  const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [warehouses, setWarehouses] = useState([]);
+  const [clients, setClients] = useState([]);
+  
+  // Filter states - default to "All" for date range
+  const [dateRange, setDateRange] = useState("All");
+  const [warehouse, setWarehouse] = useState("");
+  const [client, setClient] = useState("");
   const [user, setUser] = useState("All Users");
 
-  const filtersObj = useMemo(
-    () => ({ dateRange, warehouse, user }),
-    [dateRange, warehouse, user],
-  );
+  // Fetch warehouses on mount
+  useEffect(() => {
+    fetchWarehouses();
+    fetchClients();
+  }, []);
 
-  const handleApply = () => console.log("Apply Filters:", filtersObj);
+  const fetchWarehouses = async () => {
+    try {
+      const response = await http.get("/warehouses");
+      if (response.data.success) {
+        setWarehouses(response.data.data);
+        if (response.data.data.length > 0) {
+          setWarehouse(response.data.data[0].id.toString());
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching warehouses:", error);
+    }
+  };
+
+  const fetchClients = async () => {
+    try {
+      const response = await http.get("/clients");
+      if (response.data.success) {
+        setClients(response.data.data.clients);
+        if (response.data.data.clients.length > 0) {
+          setClient(response.data.data.clients[0].id.toString());
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+    }
+  };
+
+  // Calculate date range based on selection
+  const getDateRange = useCallback(() => {
+    const today = new Date();
+    let from, to;
+
+    switch (dateRange) {
+      case "All":
+        // Return null dates to indicate no date filtering
+        // The API might handle this differently - you may need to adjust
+        from = null;
+        to = null;
+        break;
+      case "Today":
+        from = format(today, "yyyy-MM-dd");
+        to = format(today, "yyyy-MM-dd");
+        break;
+      case "This Week":
+        from = format(subDays(today, 7), "yyyy-MM-dd");
+        to = format(today, "yyyy-MM-dd");
+        break;
+      case "This Month":
+        from = format(startOfMonth(today), "yyyy-MM-dd");
+        to = format(endOfMonth(today), "yyyy-MM-dd");
+        break;
+      case "Last Month":
+        const lastMonth = subDays(startOfMonth(today), 1);
+        from = format(startOfMonth(lastMonth), "yyyy-MM-dd");
+        to = format(endOfMonth(lastMonth), "yyyy-MM-dd");
+        break;
+      default:
+        from = null;
+        to = null;
+    }
+
+    return { from, to };
+  }, [dateRange]);
+
+  // Fetch report data
+  const fetchReportData = useCallback(async () => {
+    if (!warehouse || !client) return;
+
+    setLoading(true);
+    try {
+      const { from, to } = getDateRange();
+      
+      // Build params object
+      const params = {
+        warehouse_id: warehouse,
+        client_id: client,
+      };
+      
+      // Only add date params if they exist (for "All" option)
+      if (from && to) {
+        params.date_from = from;
+        params.date_to = to;
+      }
+      
+    
+      
+      console.log("Fetching with params:", params); // For debugging
+      
+      const response = await http.get("/reports/pick-productivity", {
+        params
+      });
+
+      if (response.data.success) {
+        setReportData(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching report data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [warehouse, client, dateRange, getDateRange]);
+
+  // Apply filters
+  const handleApply = () => {
+    fetchReportData();
+  };
 
   const handleReset = () => {
-    setDateRange("This Month (Oct 2023)");
-    setWarehouse("All Warehouses");
+    setDateRange("All"); // Reset to "All" instead of "This Month"
+    if (warehouses.length > 0) {
+      setWarehouse(warehouses[0].id.toString());
+    }
+    if (clients.length > 0) {
+      setClient(clients[0].id.toString());
+    }
     setUser("All Users");
   };
 
-  const rows = [
-    {
-      id: "Marcus Johnson",
-      picker: "Marcus Johnson",
-      tasksCompleted: 420,
-      linesPicked: 1250,
-      unitsPicked: 3800,
-      avgTime: "3m 12s",
-      exceptions: 2,
-      accuracy: 99.9,
-    },
-    {
-      id: "Elena Rodriguez",
-      picker: "Elena Rodriguez",
-      tasksCompleted: 385,
-      linesPicked: 1100,
-      unitsPicked: 3250,
-      avgTime: "3m 30s",
-      exceptions: 5,
-      accuracy: 99.5,
-    },
-    {
-      id: "David Chen",
-      picker: "David Chen",
-      tasksCompleted: 310,
-      linesPicked: 950,
-      unitsPicked: 2800,
-      avgTime: "4m 05s",
-      exceptions: 1,
-      accuracy: 99.9,
-    },
-    {
-      id: "Priya Patel",
-      picker: "Priya Patel",
-      tasksCompleted: 290,
-      linesPicked: 880,
-      unitsPicked: 2450,
-      avgTime: "4m 15s",
-      exceptions: 8,
-      accuracy: 99.1,
-      avatar: true,
-    },
-    {
-      id: "Robert Smith",
-      picker: "Robert Smith",
-      tasksCompleted: 450,
-      linesPicked: 1400,
-      unitsPicked: 4200,
-      avgTime: "2m 55s",
-      exceptions: 12,
-      accuracy: 98.8,
-    },
-    {
-      id: "Sarah Okafor",
-      picker: "Sarah Okafor",
-      tasksCompleted: 340,
-      linesPicked: 1050,
-      unitsPicked: 3100,
-      avgTime: "3m 40s",
-      exceptions: 3,
-      accuracy: 99.7,
-    },
-  ];
+  // Auto-fetch when warehouse or client changes (optional)
+  useEffect(() => {
+    if (warehouse && client) {
+      fetchReportData();
+    }
+  }, [warehouse, client, fetchReportData]);
+
+  // Format seconds to readable time
+  const formatTime = (seconds) => {
+    if (!seconds || seconds === "0" || seconds === null) return "0s";
+    const secsNum = parseInt(seconds);
+    if (isNaN(secsNum)) return "0s";
+    
+    const hrs = Math.floor(secsNum / 3600);
+    const mins = Math.floor((secsNum % 3600) / 60);
+    const secs = secsNum % 60;
+    
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    if (mins > 0) return `${mins}m ${secs}s`;
+    return `${secs}s`;
+  };
+
+  // Transform API data for table
+  const tableRows = useMemo(() => {
+    if (!reportData?.pickers) return [];
+
+    return reportData.pickers
+      .filter(picker => {
+        if (user === "All Users") return true;
+        return picker.picker_name === user;
+      })
+      .map(picker => ({
+        id: picker.assigned_to || `unassigned-${Math.random()}`,
+        picker: picker.picker_name,
+        tasksCompleted: picker.completed_tasks,
+        linesPicked: picker.total_tasks,
+        unitsPicked: parseFloat(picker.total_units_picked || 0),
+        avgTime: formatTime(picker.avg_pick_time_seconds),
+        exceptions: picker.exception_tasks,
+        accuracy: 100 - (picker.exception_rate_pct || 0),
+        totalHours: parseFloat(picker.total_hours_worked || 0).toFixed(2),
+        picksPerHour: parseFloat(picker.picks_per_hour || 0).toFixed(2)
+      }));
+  }, [reportData, user]);
+
+  // Get unique picker names for user filter
+  const pickerOptions = useMemo(() => {
+    if (!reportData?.pickers) return ["All Users"];
+    return [
+      "All Users",
+      ...reportData.pickers
+        .map(p => p.picker_name)
+        .filter(name => name && name !== "Unassigned")
+    ];
+  }, [reportData]);
 
   const columns = [
     {
@@ -96,32 +218,67 @@ export default function PickProductivity() {
       title: "Picker",
       render: (row) => (
         <div className="flex items-center gap-2">
-          {/* optional avatar dot like screenshot */}
-          {row.avatar ? (
-            <div className="h-7 w-7 rounded-full bg-gray-200" />
-          ) : null}
-
-          <button className="text-blue-600 hover:underline">
+          <div className="h-7 w-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+            {row.picker.charAt(0)}
+          </div>
+          <span className="text-sm font-medium text-gray-900">
             {row.picker}
-          </button>
+          </span>
         </div>
       ),
     },
-    { key: "tasksCompleted", title: "Tasks Completed" },
-    { key: "linesPicked", title: "Lines Picked" },
-    { key: "unitsPicked", title: "Units Picked" },
-    { key: "avgTime", title: "Avg Time" },
-    { key: "exceptions", title: "Exceptions" },
+    { 
+      key: "tasksCompleted", 
+      title: "Tasks Completed",
+      render: (row) => <span className="font-medium">{row.tasksCompleted}</span>
+    },
+    { 
+      key: "linesPicked", 
+      title: "Lines Picked",
+      render: (row) => <span className="font-medium">{row.linesPicked}</span>
+    },
+    { 
+      key: "unitsPicked", 
+      title: "Units Picked",
+      render: (row) => <span className="font-medium">{row.unitsPicked.toFixed(0)}</span>
+    },
+    { 
+      key: "avgTime", 
+      title: "Avg Time",
+      render: (row) => <span className="font-mono">{row.avgTime}</span>
+    },
+    { 
+      key: "exceptions", 
+      title: "Exceptions",
+      render: (row) => (
+        <Badge 
+          text={row.exceptions.toString()} 
+          tone={row.exceptions > 0 ? "orange" : "gray"}
+        />
+      )
+    },
     {
       key: "accuracy",
       title: "Accuracy %",
-      render: (row) => <AccuracyPill value={row.accuracy} />,
+      render: (row) => <AccuracyPill value={row.accuracy.toFixed(1)} />,
     },
   ];
 
+  // Loading state
+  if (loading && !reportData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading report data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto w-full max-w-7xl px-4 py-5">
+      <div className="mx-auto w-full max-w-7xl 2xl:max-w-[1800px] px-4 py-5">
         <PageHeader
           title="Pick Productivity"
           subtitle="Monitor picker throughput, time, and exceptions"
@@ -131,14 +288,14 @@ export default function PickProductivity() {
           ]}
           actions={
             <>
-              <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">
+              {/* <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm hover:bg-gray-50">
                 <Download className="h-4 w-4" />
                 Export Report
               </button>
-              <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">
+              <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm hover:bg-gray-50">
                 <Printer className="h-4 w-4" />
                 Print
-              </button>
+              </button> */}
             </>
           }
         />
@@ -151,39 +308,37 @@ export default function PickProductivity() {
                 key: "dateRange",
                 label: "Date Range",
                 value: dateRange,
-                options: [
-                  "Today",
-                  "This Week",
-                  "This Month (Oct 2023)",
-                  "Last Month",
-                ],
+                options: ["All", "Today", "This Week", "This Month", "Last Month"],
               },
               {
                 key: "warehouse",
                 label: "Warehouse",
                 value: warehouse,
-                options: [
-                  "All Warehouses",
-                  "WH-NYC-01",
-                  "WH-LA-02",
-                  "WH-CHI-03",
-                ],
+                options: warehouses.map(w => ({
+                  label: w.warehouse_name,
+                  value: w.id.toString()
+                })),
+              },
+              {
+                key: "client",
+                label: "Client",
+                value: client,
+                options: clients.map(c => ({
+                  label: c.client_name,
+                  value: c.id.toString()
+                })),
               },
               {
                 key: "user",
                 label: "User",
                 value: user,
-                options: [
-                  "All Users",
-                  "Marcus Johnson",
-                  "Elena Rodriguez",
-                  "Priya Patel",
-                ],
+                options: pickerOptions,
               },
             ]}
             onFilterChange={(key, val) => {
               if (key === "dateRange") setDateRange(val);
               if (key === "warehouse") setWarehouse(val);
+              if (key === "client") setClient(val);
               if (key === "user") setUser(val);
             }}
             onApply={handleApply}
@@ -196,9 +351,9 @@ export default function PickProductivity() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <StatCard
             title="Picks / Hour"
-            value="142"
+            value={reportData?.summary?.picks_per_hour?.toFixed(2) || "0"}
             accentColor="#2563EB"
-            subtext="Vs. last month"
+            subtext="Overall average"
           />
 
           <div className="bg-white border rounded-lg p-4 relative overflow-hidden">
@@ -209,11 +364,12 @@ export default function PickProductivity() {
             <p className="text-sm text-gray-500">Avg Pick Task Time</p>
 
             <div className="mt-2 flex items-baseline gap-2">
-              <p className="text-2xl font-semibold text-gray-900">3m 45s</p>
-              <span className="text-xs font-semibold text-red-600">↘ 12s</span>
+              <p className="text-2xl font-semibold text-gray-900">
+                {formatTime(reportData?.summary?.avg_pick_time_seconds)}
+              </p>
             </div>
 
-            <p className="mt-1 text-sm text-gray-500">Improved efficiency</p>
+            <p className="mt-1 text-sm text-gray-500">Per pick task</p>
           </div>
 
           <div className="bg-white border rounded-lg p-4 relative overflow-hidden">
@@ -224,20 +380,21 @@ export default function PickProductivity() {
             <p className="text-sm text-gray-500">Exception Rate</p>
 
             <div className="mt-2 flex items-baseline gap-2">
-              <p className="text-2xl font-semibold text-gray-900">1.2%</p>
-              <span className="text-xs font-medium text-gray-500">
-                — Stable
-              </span>
+              <p className="text-2xl font-semibold text-gray-900">
+                {reportData?.summary?.exception_rate_pct?.toFixed(1) || "0"}%
+              </p>
             </div>
 
-            <p className="mt-1 text-sm text-gray-500">Target: &lt; 2.0%</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Target: &lt; 2.0%
+            </p>
           </div>
 
           <StatCard
             title="Total Units Picked"
-            value="24,580"
+            value={reportData?.summary?.total_units_picked?.toLocaleString() || "0"}
             accentColor="#16A34A"
-            subtext="This month"
+            subtext={dateRange === "All" ? "All time" : "This period"}
           />
         </div>
 
@@ -248,13 +405,19 @@ export default function PickProductivity() {
               Picker Performance Details
             </h3>
 
-            <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            {/* <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
               View Exceptions
-            </button>
+            </button> */}
           </div>
 
           <div className="p-2">
-            <CusTable columns={columns} data={rows} />
+            {tableRows.length > 0 ? (
+              <CusTable columns={columns} data={tableRows} />
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No data available for the selected filters
+              </div>
+            )}
           </div>
         </div>
       </div>

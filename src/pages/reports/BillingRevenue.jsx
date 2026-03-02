@@ -1,12 +1,23 @@
 // src/pages/reports/BillingRevenue.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { RefreshCw, Download, Search } from "lucide-react";
+import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 
 import PageHeader from "../components/PageHeader";
 import FilterBar from "../components/FilterBar";
 import StatCard from "../components/StatCard";
 import CusTable from "../components/CusTable";
 import { Badge } from "./components/helper";
+import http from "../../api/http";
+
+// Date range options mapping
+const DATE_RANGES = {
+  "All": { days: null },
+  "Today": { days: 0 },
+  "This Week": { days: 7 },
+  "This Month": { days: 30 },
+  "Last Month": { days: 30, offset: 30 }
+};
 
 const NumPill = ({ value, tone = "green" }) => {
   const tones = {
@@ -27,109 +38,227 @@ const NumPill = ({ value, tone = "green" }) => {
   );
 };
 
+// Format currency
+const formatCurrency = (value) => {
+  if (!value && value !== 0) return "₹0";
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num);
+};
+
 export default function BillingRevenue() {
-  const [dateRange, setDateRange] = useState("This Month");
-  const [client, setClient] = useState("All Clients");
+  const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  
+  // Pagination states for client dropdown
+  const [clientPage, setClientPage] = useState(1);
+  const [clients, setClients] = useState([]);
+  const [clientPagination, setClientPagination] = useState({ page: 1, pages: 1, total: 0 });
+  
+  // Filter states
+  const [dateRange, setDateRange] = useState("All");
+  const [client, setClient] = useState("");
   const [chargeType, setChargeType] = useState("All Charge Types");
   const [search, setSearch] = useState("");
 
-  const filtersObj = useMemo(
-    () => ({ dateRange, client, chargeType, search }),
-    [dateRange, client, chargeType, search],
-  );
+  // Fetch clients with pagination
+  const fetchClients = useCallback(async (page = 1) => {
+    try {
+      const response = await http.get("/clients", {
+        params: { page, limit: 10 }
+      });
+      if (response.data.success) {
+        setClients(response.data.data.clients);
+        setClientPagination(response.data.data.pagination || { page: 1, pages: 1, total: response.data.data.clients.length });
+        if (response.data.data.clients.length > 0 && !client) {
+          setClient(response.data.data.clients[0].id.toString());
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+    }
+  }, [client]);
 
-  const handleApply = () => console.log("Apply Filters:", filtersObj);
+  // Load clients on mount
+  useEffect(() => {
+    fetchClients(1);
+  }, [fetchClients]);
+
+  // Calculate date range based on selection
+  const getDateRange = useCallback(() => {
+    const today = new Date();
+    let from, to;
+
+    switch (dateRange) {
+      case "All":
+        from = null;
+        to = null;
+        break;
+      case "Today":
+        from = format(today, "yyyy-MM-dd");
+        to = format(today, "yyyy-MM-dd");
+        break;
+      case "This Week":
+        from = format(subDays(today, 7), "yyyy-MM-dd");
+        to = format(today, "yyyy-MM-dd");
+        break;
+      case "This Month":
+        from = format(startOfMonth(today), "yyyy-MM-dd");
+        to = format(endOfMonth(today), "yyyy-MM-dd");
+        break;
+      case "Last Month":
+        const lastMonth = subDays(startOfMonth(today), 1);
+        from = format(startOfMonth(lastMonth), "yyyy-MM-dd");
+        to = format(endOfMonth(lastMonth), "yyyy-MM-dd");
+        break;
+      default:
+        from = null;
+        to = null;
+    }
+
+    return { from, to };
+  }, [dateRange]);
+
+  // Fetch billing revenue report data
+  const fetchReportData = useCallback(async () => {
+    if (!client) return;
+
+    setLoading(true);
+    try {
+      const { from, to } = getDateRange();
+      
+      // Build params object
+      const params = {
+        client_id: client,
+      };
+      
+      // Only add date params if they exist
+      if (from && to) {
+        params.date_from = from;
+        params.date_to = to;
+      }
+      
+      console.log("Fetching billing revenue with params:", params);
+      
+      const response = await http.get("/reports/billing-revenue", {
+        params
+      });
+
+      if (response.data.success) {
+        setReportData(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching billing revenue data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [client, dateRange, getDateRange]);
+
+  // Apply filters
+  const handleApply = () => {
+    fetchReportData();
+    console.log("Apply Filters:", { dateRange, client, chargeType, search });
+  };
+
   const handleReset = () => {
-    setDateRange("This Month");
-    setClient("All Clients");
+    setDateRange("All");
+    if (clients.length > 0) {
+      setClient(clients[0].id.toString());
+    }
     setChargeType("All Charge Types");
     setSearch("");
   };
 
-  const rows = [
-    {
-      id: "TechRetail Inc.",
-      customer: "TechRetail Inc.",
-      eventsCount: 2450,
-      blocked: 0,
-      invoices: 12,
-      totalBilled: "₹1,85,000",
-      outstanding: "₹45,000",
-      overdue: 0,
-    },
-    {
-      id: "Global Fashion Ltd.",
-      customer: "Global Fashion Ltd.",
-      eventsCount: 1800,
-      blocked: 85,
-      invoices: 8,
-      totalBilled: "₹1,42,500",
-      outstanding: "₹1,42,500",
-      overdue: 25000,
-    },
-    {
-      id: "Fresh Foods Co.",
-      customer: "Fresh Foods Co.",
-      eventsCount: 950,
-      blocked: 12,
-      invoices: 14,
-      totalBilled: "₹85,000",
-      outstanding: "₹12,000",
-      overdue: 0,
-    },
-    {
-      id: "AutoParts Express",
-      customer: "AutoParts Express",
-      eventsCount: 320,
-      blocked: 31,
-      invoices: 5,
-      totalBilled: "₹28,400",
-      outstanding: "₹28,400",
-      overdue: 12000,
-    },
-    {
-      id: "Home Decor Plus",
-      customer: "Home Decor Plus",
-      eventsCount: 80,
-      blocked: 0,
-      invoices: 3,
-      totalBilled: "₹9,100",
-      outstanding: "₹0",
-      overdue: 0,
-    },
-  ];
+  // Auto-fetch when client changes
+  useEffect(() => {
+    if (client) {
+      fetchReportData();
+    }
+  }, [client, fetchReportData]);
 
-  const filtered = useMemo(() => {
+  // Transform API data for table
+  const tableRows = useMemo(() => {
+    if (!reportData?.customers) return [];
+
+    let rows = reportData.customers.map(customer => ({
+      id: customer.client_id,
+      customer: customer.client_name,
+      eventsCount: customer.events_count || 0,
+      blocked: parseInt(customer.blocked_events || 0),
+      invoices: customer.invoices_count || 0,
+      totalBilled: formatCurrency(customer.total_billed),
+      outstanding: formatCurrency(customer.outstanding),
+      overdue: parseFloat(customer.overdue || 0),
+    }));
+
+    // Apply charge type filter (dummy filter for now)
+    if (chargeType !== "All Charge Types") {
+      // TODO: Add actual charge type filtering when API supports it
+      console.log("Charge type filter selected:", chargeType);
+    }
+
+    // Apply search filter
     const q = (search || "").toLowerCase().trim();
-    if (!q) return rows;
+    if (q) {
+      rows = rows.filter((r) =>
+        [
+          r.customer,
+          String(r.eventsCount),
+          String(r.blocked),
+          String(r.invoices),
+          r.totalBilled,
+          r.outstanding,
+          String(r.overdue),
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      );
+    }
 
-    return rows.filter((r) =>
-      [
-        r.customer,
-        String(r.eventsCount),
-        String(r.blocked),
-        String(r.invoices),
-        r.totalBilled,
-        r.outstanding,
-        String(r.overdue),
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(q),
-    );
-  }, [rows, search]);
+    return rows;
+  }, [reportData, chargeType, search]);
+
+  // Summary stats from API
+  const summary = useMemo(() => {
+    if (!reportData?.summary) {
+      return {
+        estRevenue: 0,
+        billableEvents: 0,
+        blockedEvents: 0,
+        invoicesRaised: 0,
+        avgBillingCycle: 0
+      };
+    }
+
+    return {
+      estRevenue: reportData.summary.est_revenue || 0,
+      billableEvents: reportData.summary.billable_events || 0,
+      blockedEvents: reportData.summary.blocked_events || 0,
+      invoicesRaised: reportData.summary.invoices_raised || 0,
+      avgBillingCycle: reportData.summary.avg_billing_cycle || 0
+    };
+  }, [reportData]);
 
   const columns = [
     {
       key: "customer",
       title: "Customer",
       render: (row) => (
-        <button className="text-blue-600 hover:underline">
+        <button className="text-blue-600 hover:underline font-medium">
           {row.customer}
         </button>
       ),
     },
-    { key: "eventsCount", title: "Events Count" },
+    { 
+      key: "eventsCount", 
+      title: "Events Count",
+      render: (row) => <span className="font-medium">{row.eventsCount}</span>
+    },
     {
       key: "blocked",
       title: "Blocked",
@@ -140,9 +269,21 @@ export default function BillingRevenue() {
         return <NumPill value={n} tone="orange" />;
       },
     },
-    { key: "invoices", title: "Invoices" },
-    { key: "totalBilled", title: "Total Billed" },
-    { key: "outstanding", title: "Outstanding" },
+    { 
+      key: "invoices", 
+      title: "Invoices",
+      render: (row) => <span className="font-medium">{row.invoices}</span>
+    },
+    { 
+      key: "totalBilled", 
+      title: "Total Billed",
+      render: (row) => <span className="font-medium">{row.totalBilled}</span>
+    },
+    { 
+      key: "outstanding", 
+      title: "Outstanding",
+      render: (row) => <span className="font-medium">{row.outstanding}</span>
+    },
     {
       key: "overdue",
       title: "Overdue",
@@ -150,24 +291,39 @@ export default function BillingRevenue() {
         const n = Number(row.overdue || 0);
         if (n === 0) return <NumPill value="₹0" tone="green" />;
         if (n >= 20000)
-          return <NumPill value={`₹${n.toLocaleString()}`} tone="red" />;
-        return <NumPill value={`₹${n.toLocaleString()}`} tone="orange" />;
+          return <NumPill value={formatCurrency(n)} tone="red" />;
+        return <NumPill value={formatCurrency(n)} tone="orange" />;
       },
     },
     {
       key: "action",
       title: "Action",
-      render: () => (
-        <button className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100">
+      render: (row) => (
+        <button 
+          onClick={() => console.log("View details for:", row.customer)}
+          className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100 transition-colors"
+        >
           Details
         </button>
       ),
     },
   ];
 
+  // Loading state
+  if (loading && !reportData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading billing revenue data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto w-full max-w-7xl px-4 py-5">
+      <div className="mx-auto w-full max-w-7xl 2xl:max-w-[1800px] px-4 py-5">
         <PageHeader
           title="Billing Cycle & Revenue"
           subtitle="Track revenue generation, billable events, and payment efficiency"
@@ -177,14 +333,17 @@ export default function BillingRevenue() {
           ]}
           actions={
             <>
-              <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">
+              {/* <button 
+                onClick={fetchReportData}
+                className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
+              >
                 <RefreshCw className="h-4 w-4" />
                 Refresh
               </button>
-              <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">
+              <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
                 <Download className="h-4 w-4" />
                 Export CSV
-              </button>
+              </button> */}
             </>
           }
         />
@@ -197,19 +356,21 @@ export default function BillingRevenue() {
                 key: "dateRange",
                 label: "Date Range",
                 value: dateRange,
-                options: ["Today", "This Week", "This Month", "Last Month"],
+                options: ["All", "Today", "This Week", "This Month", "Last Month"],
               },
               {
                 key: "client",
                 label: "Client",
                 value: client,
-                options: [
-                  "All Clients",
-                  "TechRetail Inc.",
-                  "Global Fashion Ltd.",
-                  "Fresh Foods Co.",
-                  "AutoParts Express",
-                ],
+                options: clients.map(c => ({
+                  label: c.client_name,
+                  value: c.id.toString()
+                })),
+                pagination: clientPagination,
+                onPageChange: (page) => {
+                  setClientPage(page);
+                  fetchClients(page);
+                },
               },
               {
                 key: "chargeType",
@@ -244,10 +405,10 @@ export default function BillingRevenue() {
             />
             <p className="text-sm text-gray-500">Est. Revenue</p>
             <p className="text-2xl font-semibold text-gray-900 mt-2">
-              ₹4,50,000
+              {formatCurrency(summary.estRevenue)}
             </p>
             <div className="mt-2">
-              <Badge text="↗ +8% vs last month" tone="green" />
+              <Badge text="Current period" tone="green" />
             </div>
           </div>
 
@@ -257,9 +418,11 @@ export default function BillingRevenue() {
               style={{ backgroundColor: "#2563EB" }}
             />
             <p className="text-sm text-gray-500">Billable Events</p>
-            <p className="text-2xl font-semibold text-gray-900 mt-2">5,600</p>
+            <p className="text-2xl font-semibold text-gray-900 mt-2">
+              {summary.billableEvents.toLocaleString()}
+            </p>
             <div className="mt-2">
-              <Badge text="+12% Activity" tone="green" />
+              <Badge text="Total events" tone="blue" />
             </div>
           </div>
 
@@ -269,17 +432,22 @@ export default function BillingRevenue() {
               style={{ backgroundColor: "#EF4444" }}
             />
             <p className="text-sm text-gray-500">Blocked Events</p>
-            <p className="text-2xl font-semibold text-red-600 mt-2">128</p>
+            <p className="text-2xl font-semibold text-red-600 mt-2">
+              {summary.blockedEvents}
+            </p>
             <div className="mt-2">
-              <Badge text="Needs Attention" tone="red" />
+              <Badge 
+                text={summary.blockedEvents > 0 ? "Needs Attention" : "No blocks"} 
+                tone={summary.blockedEvents > 0 ? "red" : "green"}
+              />
             </div>
           </div>
 
           <StatCard
             title="Invoices Raised"
-            value="42"
+            value={summary.invoicesRaised.toString()}
             accentColor="#7C3AED"
-            subtext="On Schedule"
+            subtext="This period"
           />
 
           <div className="bg-white border rounded-lg p-4 relative overflow-hidden">
@@ -289,10 +457,13 @@ export default function BillingRevenue() {
             />
             <p className="text-sm text-gray-500">Avg Billing Cycle</p>
             <p className="text-2xl font-semibold text-gray-900 mt-2">
-              2.5 Days
+              {Math.abs(summary.avgBillingCycle)} Days
             </p>
             <div className="mt-2">
-              <Badge text="-0.5 Days faster" tone="green" />
+              <Badge 
+                text={summary.avgBillingCycle < 0 ? "Faster" : "Slower"} 
+                tone={summary.avgBillingCycle < 0 ? "green" : "orange"}
+              />
             </div>
           </div>
         </div>
@@ -316,7 +487,19 @@ export default function BillingRevenue() {
           </div>
 
           <div className="p-2">
-            <CusTable columns={columns} data={filtered} />
+            {tableRows.length > 0 ? (
+              <CusTable columns={columns} data={tableRows} />
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No customer data available for the selected filters</p>
+                <button 
+                  onClick={handleReset}
+                  className="mt-2 text-sm text-blue-600 hover:underline"
+                >
+                  Reset filters
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

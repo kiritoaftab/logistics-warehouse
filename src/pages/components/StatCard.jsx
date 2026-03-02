@@ -1,6 +1,7 @@
+// src/pages/components/StatCard.jsx
 import React from "react";
 
-const StatCard = ({ title, value, accentColor }) => {
+const StatCard = ({ title, value, accentColor, subtext }) => {
   return (
     <div className="bg-white border rounded-lg p-4 relative overflow-hidden">
       {/* Accent bar */}
@@ -11,6 +12,9 @@ const StatCard = ({ title, value, accentColor }) => {
 
       <p className="text-sm text-gray-500">{title}</p>
       <p className="text-2xl font-semibold text-gray-900 mt-2">{value}</p>
+      {subtext && (
+        <p className="mt-1 text-xs text-gray-500">{subtext}</p>
+      )}
     </div>
   );
 };
