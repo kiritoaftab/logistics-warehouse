@@ -189,10 +189,7 @@ export default function Reports() {
             rightSubTone="neutral"
             route="/packProductivity"
           />
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ReportCard
+            <ReportCard
             title="Outbound SLA"
             Icon={Truck}
             leftLabel="Orders Shipped"
@@ -203,6 +200,10 @@ export default function Reports() {
             rightSubTone="success"
             route="/outboundSLA"
           />
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        
 
           <ReportCard
             title="Billing Revenue"

@@ -369,18 +369,18 @@ export default function BillingRevenue() {
                   fetchClients(page);
                 },
               },
-              {
-                key: "chargeType",
-                label: "Charge Type",
-                value: chargeType,
-                options: [
-                  "All Charge Types",
-                  "Storage",
-                  "Handling",
-                  "Pick/Pack",
-                  "Transportation",
-                ],
-              },
+              // {
+              //   key: "chargeType",
+              //   label: "Charge Type",
+              //   value: chargeType,
+              //   options: [
+              //     "All Charge Types",
+              //     "Storage",
+              //     "Handling",
+              //     "Pick/Pack",
+              //     "Transportation",
+              //   ],
+              // },
             ]}
             onFilterChange={(key, val) => {
               if (key === "dateRange") setDateRange(val);

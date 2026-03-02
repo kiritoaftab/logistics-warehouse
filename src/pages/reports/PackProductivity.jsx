@@ -1,4 +1,3 @@
-// src/pages/reports/PackProductivity.jsx
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { Download, RefreshCw, Search } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
@@ -363,12 +362,12 @@ export default function PackProductivity() {
                 value: packer,
                 options: packerOptions,
               },
-              {
-                key: "zone",
-                label: "Zone",
-                value: zone,
-                options: ["All Zones", "Zone A", "Zone B", "Zone C"],
-              },
+              // {
+              //   key: "zone",
+              //   label: "Zone",
+              //   value: zone,
+              //   options: ["All Zones", "Zone A", "Zone B", "Zone C"],
+              // },
             ]}
             onFilterChange={(key, val) => {
               if (key === "dateRange") setDateRange(val);
