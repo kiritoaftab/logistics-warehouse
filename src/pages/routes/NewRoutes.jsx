@@ -182,6 +182,7 @@ const NewRoutes = [
     path: "/picking/waves/:waveId",
     element: protect("/picking/waves/:waveId", <PickWaveDetails />),
   },
+  
 ];
 
 export default NewRoutes;
