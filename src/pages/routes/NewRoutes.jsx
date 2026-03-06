@@ -40,6 +40,7 @@ import CreatePickWavePage from "../picking/components/CreatePickWavePage";
 import PackOrderDetail from "../packing/PackOrderDetail";
 import BillableEventDetail from "../billing/components/BillableEventDetail";
 import InvoiceDetail from "../billing/InvoiceDetail";
+import GrnViewPage from "../comman_pages/GrnViewPage";
 
 const protect = (path, element) => {
   const rule = ROUTE_PERMS[path];
@@ -182,7 +183,10 @@ const NewRoutes = [
     path: "/picking/waves/:waveId",
     element: protect("/picking/waves/:waveId", <PickWaveDetails />),
   },
-  
+  {
+    path: "/grnDetails/:id",
+    element: protect("/grnDetails/:id", <GrnViewPage />),
+  },
 ];
 
 export default NewRoutes;

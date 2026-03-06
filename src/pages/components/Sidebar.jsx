@@ -16,6 +16,8 @@ import {
   PackageCheck,
   HandGrab,
   Settings,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import Header from "./Header";
 import { useAuth } from "../utils/AuthProvider";
@@ -38,6 +40,7 @@ const menuItems = [
 
 const Sidebar = () => {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const { perms, loadingPerms } = useAuth();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -45,9 +48,13 @@ const Sidebar = () => {
   const visibleMenuItems = loadingPerms
     ? []
     : menuItems.filter((item) => canSeeMenuPath(perms, item.path));
+
+  const handleToggleSidebar = () => {
+    setCollapsed(!collapsed);
+  };
+
   return (
     <div className="flex h-screen bg-[#F6F8FA] overflow-hidden">
-      {" "}
       {/* Mobile Toggle */}
       <button
         className="sm:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-md shadow"
@@ -55,6 +62,7 @@ const Sidebar = () => {
       >
         {open ? <X /> : <Menu />}
       </button>
+
       {/* Overlay */}
       {open && (
         <div
@@ -62,18 +70,47 @@ const Sidebar = () => {
           className="fixed inset-0 bg-black/40 z-30 sm:hidden"
         />
       )}
+
       {/* Sidebar */}
       <aside
-        className={`fixed sm:sticky sm:top-0 top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 z-40 transform transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"} sm:translate-x-0`}
+        className={`fixed sm:sticky sm:top-0 top-0 left-0 h-screen bg-white border-r border-gray-200 z-40 transform transition-all duration-300 ${
+          collapsed ? "w-20" : "w-64"
+        } ${open ? "translate-x-0" : "-translate-x-full"} sm:translate-x-0`}
       >
         {/* Wrapper */}
         <div className="flex h-full flex-col">
-          {/* Logo */}
-          <div className="h-16 flex items-center px-6 border-b">
-            <h1 className="text-xl font-bold text-gray-900">
-              Orbit <span className="text-primary">WMS</span>
-            </h1>
+          {/* Logo with Toggle Button */}
+          <div className="h-16 flex items-center px-4 border-b">
+            {!collapsed ? (
+              <>
+                <h1 className="text-xl font-bold text-gray-900 flex-1">
+                  Orbit <span className="text-primary">WMS</span>
+                </h1>
+                <button
+                  onClick={handleToggleSidebar}
+                  className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+                  title="Collapse sidebar"
+                >
+                  <ChevronDown size={16} />
+                </button>
+              </>
+            ) : (
+              <>
+                <h1 className="text-xl font-bold text-gray-900 flex-1 text-center">
+                  O<span className="text-primary">W</span>
+                </h1>
+                <button
+                  onClick={handleToggleSidebar}
+                  className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+                  title="Expand sidebar"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </>
+            )}
           </div>
+
+          {/* Navigation Menu */}
           <nav className="flex-1 overflow-y-auto p-3 space-y-1">
             {visibleMenuItems.map(({ name, icon: Icon, path }) => (
               <NavLink
@@ -81,18 +118,22 @@ const Sidebar = () => {
                 to={path}
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition ${isActive ? "bg-primary text-white" : "text-gray-600 hover:bg-gray-100"}`
+                  `flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition ${
+                    isActive 
+                      ? "bg-primary text-white" 
+                      : "text-gray-600 hover:bg-gray-100"
+                  } ${collapsed ? "justify-center" : ""}`
                 }
+                title={collapsed ? name : ""}
               >
-                <Icon className="w-5 h-5" />
-                {name}
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                {!collapsed && name}
               </NavLink>
             ))}
           </nav>
 
-          {/* Logout */}
+          {/* Logout Button */}
           <div className="mt-auto border-t p-3">
-            {" "}
             <button
               onClick={() => {
                 sessionStorage.clear();
@@ -100,10 +141,13 @@ const Sidebar = () => {
                 logout();
                 navigate("/login", { replace: true });
               }}
-              className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50"
+              className={`flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 ${
+                collapsed ? "justify-center" : ""
+              }`}
+              title={collapsed ? "Logout" : ""}
             >
               <svg
-                className="h-5 w-5"
+                className="h-5 w-5 flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -115,11 +159,12 @@ const Sidebar = () => {
                   d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1m0-9V4"
                 />
               </svg>
-              Logout
+              {!collapsed && "Logout"}
             </button>
           </div>
         </div>
       </aside>
+
       {/* Content Area */}
       <div className="flex-1 min-w-0 flex flex-col h-screen">
         <Header />
