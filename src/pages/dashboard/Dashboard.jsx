@@ -206,7 +206,10 @@ const Dashboard = () => {
             >
               Start Picking Wave
             </button>
-            <button className="px-4 py-2 rounded-md text-sm bg-primary text-white">
+            <button 
+                          onClick={() => navigate("/outbound/saleOrderCreate/new")}
+
+            className="px-4 py-2 rounded-md text-sm bg-primary text-white">
               Create SO
             </button>
             <button
