@@ -200,12 +200,12 @@ const Dashboard = () => {
             {/* <button className="px-4 py-2 border rounded-md text-sm bg-white">
               Receive GRN
             </button> */}
-            <button
+            {/* <button
               onClick={() => navigate("/picking")}
               className="px-4 py-2 border rounded-md text-sm bg-white"
             >
               Start Picking Wave
-            </button>
+            </button> */}
             <button className="px-4 py-2 rounded-md text-sm bg-primary text-white">
               Create SO
             </button>
