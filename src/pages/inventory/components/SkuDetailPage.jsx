@@ -166,20 +166,20 @@ export default function SkuDetailPage() {
         <span className="font-medium text-orange-600">{item.hold_qty}</span>
       ),
     },
-    {
-      key: "allocated_qty",
-      title: "Allocated",
-      render: (item) => (
-        <span className="font-medium text-blue-600">{item.allocated_qty}</span>
-      ),
-    },
-    {
-      key: "damaged_qty",
-      title: "Damaged",
-      render: (item) => (
-        <span className="font-medium text-red-600">{item.damaged_qty}</span>
-      ),
-    },
+    // {
+    //   key: "allocated_qty",
+    //   title: "Allocated",
+    //   render: (item) => (
+    //     <span className="font-medium text-blue-600">{item.allocated_qty}</span>
+    //   ),
+    // },
+    // {
+    //   key: "damaged_qty",
+    //   title: "Damaged",
+    //   render: (item) => (
+    //     <span className="font-medium text-red-600">{item.damaged_qty}</span>
+    //   ),
+    // },
     {
       key: "status",
       title: "Status",
@@ -297,7 +297,7 @@ export default function SkuDetailPage() {
           </div>
         </div>
       </div>
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className=" mx-auto py-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">

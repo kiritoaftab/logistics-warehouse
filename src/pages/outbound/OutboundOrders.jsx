@@ -334,6 +334,7 @@ const OutboundOrders = () => {
         key: "sla_due_date",
         title: "SLA Due",
         render: (row) => {
+          if (!row.sla_due_date) return null;
           const dueDate = new Date(row.sla_due_date);
           const now = new Date();
           const hoursUntilDue = (dueDate - now) / (1000 * 60 * 60);
