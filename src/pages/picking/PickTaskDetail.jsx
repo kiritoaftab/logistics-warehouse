@@ -424,14 +424,6 @@ const PickTaskDetail = () => {
                 Self Assign
               </button>
 
-              <button
-                type="button"
-                onClick={handleAssignToUser}
-                disabled={assigning || !selectedUser}
-                className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
-              >
-                Assign To
-              </button>
               <div className="w-full lg:w-60">
                 <PaginatedEntityDropdown
                   endpoint="/users"
@@ -447,6 +439,14 @@ const PickTaskDetail = () => {
                   })}
                 />
               </div>
+              <button
+                type="button"
+                onClick={handleAssignToUser}
+                disabled={assigning || !selectedUser}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+              >
+                Assign To
+              </button>
             </>
           )}
 

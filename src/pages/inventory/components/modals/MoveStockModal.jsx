@@ -114,7 +114,9 @@ const MoveStockModal = ({ open, onClose, initialData, onSuccess }) => {
     >
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs font-medium text-gray-600">SKU</label>
+          <label className="block text-xs font-medium text-gray-600">
+            Warehouse
+          </label>
           <select
             className="col-span-2 rounded-md border px-3 py-2 text-sm"
             value={form.warehouse_id}
