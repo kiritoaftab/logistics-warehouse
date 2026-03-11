@@ -714,7 +714,7 @@ const Putaway = () => {
         onReset={handleResetFilters}
         onApply={() => console.log("Filters applied:", filterValues)}
       >
-        <div>
+        <div className="">
           <p className="text-xs text-gray-500">Client</p>
           <PaginatedEntityDropdown
             endpoint="/clients"

@@ -218,6 +218,7 @@ const PaginatedEntityDropdown = ({
 
           <div className="border-t border-gray-200">
             <Pagination
+              saveSpace={true}
               pagination={pagination}
               onPageChange={(p) => loadPage(p)}
             />

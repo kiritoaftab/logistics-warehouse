@@ -1,10 +1,9 @@
 import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const Pagination = ({ pagination, onPageChange }) => {
+const Pagination = ({ pagination, onPageChange, saveSpace }) => {
   const { page, pages } = pagination;
   if (!pages || pages <= 1) return null;
-
   const getPages = () => {
     const delta = 2;
     const range = [];
@@ -32,7 +31,8 @@ const Pagination = ({ pagination, onPageChange }) => {
 
     return rangeWithDots;
   };
-
+  console.log(saveSpace);
+  if (saveSpace === undefined) saveSpace = true;
   return (
     <div className="flex items-center justify-between px-4 py-3">
       {/* Left */}
@@ -43,32 +43,34 @@ const Pagination = ({ pagination, onPageChange }) => {
           disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
       >
         <ChevronLeft size={16} />
-        Prev
+        {!saveSpace && "Prev"}
       </button>
 
       {/* Pages */}
-      <div className="flex items-center gap-1">
-        {getPages().map((p, idx) =>
-          p === "..." ? (
-            <span key={idx} className="px-2 text-gray-400">
-              ...
-            </span>
-          ) : (
-            <button
-              key={idx}
-              onClick={() => onPageChange(p)}
-              className={`min-w-[36px] rounded-md px-3 py-1.5 text-sm
+      {!saveSpace && (
+        <div className="flex items-center gap-1">
+          {getPages().map((p, idx) =>
+            p === "..." ? (
+              <span key={idx} className="px-2 text-gray-400">
+                ...
+              </span>
+            ) : (
+              <button
+                key={idx}
+                onClick={() => onPageChange(p)}
+                className={`min-w-[36px] rounded-md px-3 py-1.5 text-sm
                 ${
                   p === page
                     ? "bg-blue-600 text-white"
                     : "border hover:bg-gray-50"
                 }`}
-            >
-              {p}
-            </button>
-          ),
-        )}
-      </div>
+              >
+                {p}
+              </button>
+            ),
+          )}
+        </div>
+      )}
 
       {/* Right */}
       <button
@@ -77,7 +79,7 @@ const Pagination = ({ pagination, onPageChange }) => {
         className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm
           disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
       >
-        Next
+        {!saveSpace && "Next"}
         <ChevronRight size={16} />
       </button>
     </div>
